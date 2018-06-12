@@ -14,3 +14,6 @@ class PhilipsHueLightBulb:
             self.brightness = self.brightness - value
         else:
             self.brightness = 0
+            
+    def getBrightness(self):
+        return self.brightness

@@ -2,6 +2,8 @@ import threading
 import mcListener
 import motionRecognizer
 
+import sys
+
 class Controller:
     
     def __init__(self):
@@ -13,11 +15,11 @@ class Controller:
         signalsLock = threading.Lock()
         
         listenerThread = mcListener.MicroControllerListener(self.signals, signalsLock)
-        listenerThread.start()
-        
         recognizerThread = motionRecognizer.MotionRecognizer(self.signals, signalsLock)
+        
+        listenerThread.start()
         recognizerThread.start()
         
-        listenerThread.join()
-        recognizerThread.join()
+        #listenerThread.join()
+        #recognizerThread.join()
         print('Controller wird beendet')
