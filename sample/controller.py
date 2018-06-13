@@ -1,6 +1,7 @@
 import threading
 import mcListener
 import motionRecognizer
+import mcListenerGriffin
 
 import sys
 
@@ -14,11 +15,12 @@ class Controller:
         
         signalsLock = threading.Lock()
         
-        listenerThread = mcListener.MicroControllerListener(self.signals, signalsLock)
-        recognizerThread = motionRecognizer.MotionRecognizer(self.signals, signalsLock)
+        listenerThread = mcListenerGriffin.MicroControllerListener(self.signals, signalsLock)
+        #listenerThread = mcListener.MicroControllerListener(self.signals, signalsLock)
+        #recognizerThread = motionRecognizer.MotionRecognizer(self.signals, signalsLock)
         
         listenerThread.start()
-        recognizerThread.start()
+        #recognizerThread.start()
         
         #listenerThread.join()
         #recognizerThread.join()
