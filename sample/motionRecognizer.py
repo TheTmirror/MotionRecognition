@@ -1,21 +1,19 @@
 import threading
 import time
 import sys
-sys.path.insert(0, '/home/pi/Desktop/Project/devices')
 
-import philipsHueLightBulb
+sys.path.insert(0, '/home/pi/Desktop/Griffin')
+from pypowermate import powermate
 
 class MotionRecognizer(threading.Thread):
     
-    devices = []
-    
-    def __init__(self, signals, signalsLock):
+    def __init__(self, signals, signalsLock, devices):
         threading.Thread.__init__(self)
         self.signals = signals
         self.signalsLock = signalsLock
+        self.devices = devices
         
     def run(self):
-        self.fillDevicesWithExamples()
         self.startDetection()
     
     def startDetection(self):
@@ -42,7 +40,8 @@ class MotionRecognizer(threading.Thread):
             
             
     def motionIsDetected(self, signal):
-        if signal == '5.00':
+        (timeStamp, event, value) = signal
+        if event == powermate.Powermate.EVENT_BUTTON and value == 0:
             return True
         else:
             return False
@@ -53,46 +52,53 @@ class MotionRecognizer(threading.Thread):
     #ausgeführt wird
     def startTransmission(self):
         print('Simulating transmitting the signals')
+
+        inMotion = True
+        lastTimeStamp = None
+        timeout = 2
         
         selectedDevice = None
         for device in self.devices:
-            if device[0] == 'Philips Hue Light Bulb Kitchen':
+            if device[0] == 'Knob':
                 print('Found Device: ', device[0])
                 selectedDevice = device[1]
                 break
         
         counter = 0
-        self.signalsLock.acquire()
-        while counter < len(self.signals):
-            signal = self.signals[counter]
-            self.signalsLock.release()
-            counter = counter + 1
-            #Here do something with the selected device
-            if float(signal) <= 2.5:
-                selectedDevice.increaseBrightness()
-                print('Increased Brightness: ', selectedDevice.getBrightness())
-            else:
-                selectedDevice.reduceBrightness()
-                print('Reduced Brightness: ', selectedDevice.getBrightness())
-            
+        #self.signalsLock.acquire()
+
+        while inMotion:
             self.signalsLock.acquire()
-        self.signalsLock.release()
+            if counter >= len(self.signals):
+               self.signalsLock.release()
+               continue
             
+            (timeStamp, event, value) = self.signals[counter]
+            self.signalsLock.release()
+            print(timeStamp)
+            counter = counter + 1
+
+            if lastTimeStamp != None and (timeStamp - lastTimeStamp) > timeout:
+                inMotion = False
+                print('Timeout')
+                continue
+
+            if event == powermate.Powermate.EVENT_ROTATE:
+                #Dies ggf hinzufügen, falls die Signale mit dem selben
+                #delay wie beim input ausgeführt werden sollen
+                if False and lastTimeStamp != None:
+                    time.sleep(timeStamp - lastTimeStamp)
+                selectedDevice.set_steady_led(selectedDevice.brightness + value)
+
+            lastTimeStamp = timeStamp
+               
         self.signalsLock.acquire()
-        del self.signals[:]
+        del self.signals[:counter]
         self.signalsLock.release()
         print('Transmission done')
-        print('Brightness is: ', selectedDevice.getBrightness())
+        print('Brightness is: ', selectedDevice.brightness)
             
     def exampleCode(self):
         self.fillDevicesWithExamples()
         for device in self.devices:
             print(device)
-        
-    def fillDevicesWithExamples(self):
-        #Philips Hue Light
-        phueBulbKitchen = philipsHueLightBulb.PhilipsHueLightBulb()
-        self.devices.append(['Philips Hue Light Bulb Kitchen', phueBulbKitchen])
-        
-        phueBulbLivingRoom = philipsHueLightBulb.PhilipsHueLightBulb()
-        self.devices.append(['Philips Hue Light Bulb Living Room', phueBulbLivingRoom])

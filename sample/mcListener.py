@@ -18,21 +18,22 @@ class MicroControllerListener(threading.Thread):
         self.startListening()
     
     def startListening(self):
+
+        tapTimeStamp = None
+        timeout = 0.5
         
         while True:
             (timeStamp, event, val) = self.knob.read_event()
-            tupel = (timesStamp, event, val)
+            tupel = (timeStamp, event, val)
+
+            if event == powermate.Powermate.EVENT_BUTTON and val == 0:
+                print('Button Event')
+                if tapTimeStamp != None and (timeStamp - tapTimeStamp) <= timeout:
+                    print('Double Klicked')
+                    break
+                else:
+                    tapTimeStamp = timeStamp
             
             self.signalsLock.acquire()
             self.signals.append(tupel)
             self.signalsLock.release()
-            
-            breakout = False
-            for (timeStamp, event, val) in self.signals:
-                if event == powermate.Powermate.EVENT_BUTTON and val == 0:
-                    breakout = True
-                    break
-                
-            if breakout:
-                print(self.signals)
-                break
