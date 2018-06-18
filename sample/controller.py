@@ -1,6 +1,7 @@
 import threading
 import motionRecognizer
 import mcListener
+from motionDetecter import MotionDetecter
 
 import sys
 
@@ -23,13 +24,56 @@ class Controller:
         
         listenerThread = mcListener.MicroControllerListener(self.signals, signalsLock)
         #recognizerThread = motionRecognizer.MotionRecognizer(self.signals, signalsLock, self.devices)
+        detectionThread = MotionDetecter(self.signals, signalsLock,
+                                         MotionDetecter.MODE_LEARNING)
         
         listenerThread.start()
         #recognizerThread.start()
+        detectionThread.start()
         
         listenerThread.join()
         #recognizerThread.join()
+        detectionThread.join()
+
+        #self.detect()
+        
         print('Controller wird beendet')
+
+    def detect(self):
+        sys.path.insert(0, '/home/pi/Desktop/Updated Project/math')
+        from myMath import myLinearInterpolation
+
+        from dataManager import DataManager
+        dm = DataManager()
+
+        n = 64
+        data = []
+
+        for signal in self.signals:
+            (t, e, v, s) = signal
+
+            if s != None:
+                data.append((t, s))
+
+        results = myLinearInterpolation(data, n)
+
+        piPathTime = '/home/pi/Desktop/Updated Project/logs/pi/mappedTime.txt'
+        piPathSumme = '/home/pi/Desktop/Updated Project/logs/pi/mappedSumme.txt'
+
+        exPathTime = '/home/pi/Desktop/Updated Project/logs/excel/mappedTime.txt'
+        exPathSumme = '/home/pi/Desktop/Updated Project/logs/excel/mappedSumme.txt'
+
+        times = []
+        summen = []
+
+        for result in results:
+            (t, s) = result
+            times.append(t)
+            summen.append(s)
+
+        dm._saveTimes(times, piPathTime, exPathTime)
+        dm._saveSummen(summen, piPathSumme, exPathSumme)
+            
 
     def initDevices(self):
         self.devices = []
