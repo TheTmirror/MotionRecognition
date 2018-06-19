@@ -1,42 +1,58 @@
+from events import BaseEvent, RotationEvent, ButtonEvent
+
 class Motion:
 
     def __init__(self):
-        self.times = None
         self.events = None
-        self.values = None
-        self.summen = None
-
         self.associatedDevice = None
 
     def isAssociated(self):
         return self.associatedDevice != None
 
     def isEmpty(self):
-        if self.times == None and self.events == None and self.values == None and self.summen == None:
+        if events == None:
             return True
         else:
             return False
 
-    def setTimes(self, times):
-        self.times = times
-
-    def setEvent(self, events):
+    def setEvents(self, events):
         self.events = events
 
-    def setValues(self, values):
-        self.values = values
+    def addEvent(self, event):
+        if self.events == None:
+            self.events = []
 
-    def setSummen(self, summen):
-        self.summen = summen
+        self.events.append(event)
 
-    def getTimes(self):
-        return self.times
+    def associate(self, device):
+        self.associatedDevice = device
 
-    def getEvent(self):
+    def equals(self, motion):
+        eventsToCompare = motion.getEvents()
+
+        if len(self.events) != len(eventsToCompare):
+            return False
+
+        for i in range(len(self.events)):
+            if(self.events[i].getTime() != eventsToCompare[i].getTime()):
+                return False
+            if type (self.events[i]) != type(eventsToCompare[i]):
+                return False
+            if isinstance(self.events[i], BaseEvent):
+                break
+            if isinstance(self.events[i], RotationEvent):
+                if self.events[i].getValue() != eventsToCompare[i].getValue():
+                    return False
+                if self.events[i].getSum() != eventsToCompare[i].getSum():
+                    return False
+            if isinstance(self.events[i], ButtonEvent):
+                if self.events[i].getValue() != eventsToCompare[i].getValue():
+                    return False
+
+        return True
+
+    def getEvents(self):
         return self.events
 
-    def getValues(self):
-        return self.values
-
-    def getSummen(self):
-        return self.summen
+    def getAssociatedDevice(self):
+        return self.associatedDevice

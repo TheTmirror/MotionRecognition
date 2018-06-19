@@ -5,6 +5,8 @@ sys.path.insert(0, '/home/pi/Desktop/Griffin')
 from pypowermate import powermate
 
 from motion import Motion
+from events import BaseEvent, RotationEvent, ButtonEvent
+from events import EVENT_BASE, EVENT_ROTATE, EVENT_BUTTON
 
 class MotionDetecter(threading.Thread):
 
@@ -12,8 +14,6 @@ class MotionDetecter(threading.Thread):
     MODE_LEARNING = 'learning'
 
     TEMPLATES_PATH = '/home/pi/Desktop/Updated Project/templates/'
-    ROTATION_SUFFIX = 'rotation.txt'
-    TIME_SUFFIX = 'times.txt'
 
     def __init__(self, signals, signalsLock, mode):
         threading.Thread.__init__(self)
@@ -38,30 +38,13 @@ class MotionDetecter(threading.Thread):
             return
 
         #For jede Geste
-        #For jeden Bestandteil einer Geste
-        for dir in sorted(os.listdir()):
-            if os.path.isfile(os.getcwd() + "/" + dir):
+        for file in sorted(os.listdir()):
+            filePath = os.getcwd() + "/" + file
+            if os.path.isdir(filePath):
                 continue
 
-            motion = Motion()
-
-            os.chdir(os.getcwd() + "/" + dir)
-            for file in sorted(os.listdir()):
-                filePath = os.getcwd() + "/" + file
-                
-                if os.path.isdir(filePath):
-                    continue
-
-                if file == self.TIME_SUFFIX:
-                    motion.setTimes(dm.getTimes(filePath))
-                elif file == self.ROTATION_SUFFIX:
-                    motion.setSummen(dm.getSummen(filePath))
-
-            if motion.isEmpty():
-                continue
-            else:
+                motion = dm.getMotion(filePath)
                 self.motions.append(motion)
-            os.chdir(os.pardir)
 
         os.chdir(oldPath)
 
@@ -98,21 +81,15 @@ class MotionDetecter(threading.Thread):
 
         i = 0
         plainPath = self.TEMPLATES_PATH + 'template'
-        while os.path.exists(plainPath + "%s/" % i):
+        while os.path.exists(plainPath + "%s.txt" % i):
             i = i + 1
         else:
-            plainPath = plainPath + "%s/" % i
+            plainPath = plainPath + "%s.txt" % i
 
-        if not os.path.exists(os.path.dirname(plainPath)):
-            os.makedirs(os.path.dirname(plainPath))
+        if not os.path.exists(os.path.dirname(self.TEMPLATES_PATH)):
+            os.makedirs(os.path.dirname(self.TEMPLATES_PATH))
 
-        timePath = plainPath + self.TIME_SUFFIX
-        dm.saveData(template.getTimes(), timePath)
-
-        rotationPath = plainPath + self.ROTATION_SUFFIX
-        dm.saveData(template.getSummen(), rotationPath)
-        #Do the same for the others
-
+        dm.saveMotion(template, plainPath)
         print('Motion Saved')
 
     #Should be reuseable
@@ -124,31 +101,36 @@ class MotionDetecter(threading.Thread):
         interpolator = Interpolator()
         n = 64
 
-        #Rotation
-        recorded = []
-        for signal in self.signalsCopy:
-            (time, event, value, summe) = signal
-            
-            if event == powermate.Powermate.EVENT_ROTATE:
-                recorded.append(signal)
+        #Filter for interpolation
+        recordedRotations = []
+        for event in self.signalsCopy:
+            if isinstance(event, RotationEvent):
+                recordedRotations.append(event)
+            else:
+                pass
 
-        rotationResult = interpolator.linearSummeInterpolation(recorded, n)
-
-        #Buttons etc...
-
+        #Construct Motion
         transformedMotion = Motion()
-        transformedTime = []
-        transformedSumme = []
-        for (t, s) in rotationResult:
-            transformedTime.append(t)
-            transformedSumme.append(s)
+        
+        #Rotation Part of Motion
+        result = interpolator.linearInterpolation(recordedRotations, n)
 
-        transformedMotion.setTimes(transformedTime)
-        transformedMotion.setSummen(transformedSumme)
+        transformedTime = result[0]
+        transformedSum = result[1]
+
+        for i in range(len(transformedTime)):
+            if i == 0:
+                event = RotationEvent(transformedTime[i], transformedSum[i], transformedSum[i])
+                transformedMotion.addEvent(event)
+                continue
+            
+            value = transformedSum[i] - transformedSum[i-1]
+            event = RotationEvent(transformedTime[i], value, transformedSum[i])
+            transformedMotion.addEvent(event)
+
+        #Other Parts of Motion
             
         return transformedMotion
-
-        
 
     def waitForDoubleClick(self):
         timeout = 0.5
@@ -166,16 +148,16 @@ class MotionDetecter(threading.Thread):
                 self.signalsLock.release()
                 continue
             #print('Started Recognition')
-            (time, event, value, summe) = self.signals[counter]
+            event = self.signals[counter]
 
-            if event == powermate.Powermate.EVENT_BUTTON and value == 0:
-                if clickTime != None and (time - clickTime) <= timeout:
+            if event.getEvent() == EVENT_BUTTON and event.getValue() == 0:
+                if clickTime != None and (event.getTime() - clickTime) <= timeout:
                     self.saveCopyOfSignals()
                     del self.signals[:]
                     self.signalsLock.release()
                     break
                 else:
-                    clickTime = time
+                    clickTime = event.getTime()
             
             self.signalsLock.release()
             counter = counter + 1

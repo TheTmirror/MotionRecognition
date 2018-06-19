@@ -4,6 +4,11 @@ sys.path.insert(0, '/home/pi/Desktop/Updated Project')
 from decimal import Decimal, getcontext
 getcontext().prec = 15
 
+from events import BaseEvent, RotationEvent, ButtonEvent
+from events import EVENT_BASE, EVENT_ROTATE, EVENT_BUTTON
+
+from motion import Motion
+
 class DataManager:
 
     def __init__(self):
@@ -43,6 +48,59 @@ class DataManager:
         if not os.path.exists(os.path.dirname(self.eventPathExcelFormat)):
             os.makedirs(os.path.dirname(self.eventPathExcelFormat))
 
+
+    def saveMotion(self, motion, path):
+        f = open(path, 'w')
+
+        f.write("Device:{};\n".format(motion.getAssociatedDevice()))
+
+        #String must always have form:
+        #Time, Event, Value, Sum
+        for event in motion.getEvents():
+            string = "Time:{};Event:{};".format(event.getTime(), event.getEvent())
+            if isinstance(event, RotationEvent):
+                string = string + "Value:{};Sum:{};".format(event.getValue(), event.getSum())
+            elif isinstance(event, ButtonEvent):
+                string = string + "Value:{};Sum:{};".format(event.getValue(), None)
+            else:
+                raise NameError('Should not happen, just for safty')
+
+            f.write(string + "\n")
+
+        f.close()
+
+    def getMotion(self, path):
+        f = open(path, 'r')
+
+        motion = Motion()
+
+        for line in f:
+            if line[:len("Device")] == "Device":
+                motion.associate(line[len("Device:"):line.find(";")])
+                continue
+            
+            time = line[line.find("Time:")+len("Time:"):line.find(";")]
+            time = Decimal(time)
+            line = line[line.find(";")+1:]
+            event = line[line.find("Event:")+len("Event:"):line.find(";")]
+            line = line[line.find(";")+1:]
+            value = line[line.find("Value:")+len("Value:"):line.find(";")]
+            value = Decimal(value)
+            line = line[line.find(";")+1:]
+            sum = line[line.find("Sum:")+len("Sum:"):line.find(";")]
+            sum = Decimal(sum)
+            line = line[line.find(";"):]
+
+            if event == EVENT_BASE:
+                event = BaseEvent(time)
+            elif event == EVENT_ROTATE:
+                event = RotationEvent(time, value, sum)
+            elif event == EVENT_BUTTON:
+                event = ButtonEvent(time, value)
+
+            motion.addEvent(event)
+
+        return motion     
 
     def saveAllData(self, data):
         fPiTime = open(self.timePathPiFormat, 'w')

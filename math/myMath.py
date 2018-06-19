@@ -1,10 +1,24 @@
 # -*- coding: utf-8 -*-
+#!MUSS NOCH AN EVENT ANGEPASST WERDEN!!!
 
 from decimal import Decimal, getcontext
 getcontext().prec = 15
 
+import sys
+sys.path.insert(0, '/home/pi/Desktop/Updated Project/sample')
+from events import BaseEvent, RotationEvent, ButtonEvent
+from events import EVENT_BASE, EVENT_ROTATE, EVENT_BUTTON
+
 class Interpolator:
 
+    def linearInterpolation(self, events, n):
+        if isinstance(events[0], RotationEvent):
+            return self.linearSumInterpolation(events, n)
+        elif isinstance(events[0], ButtonEvent):
+            pass
+        elif isinstance(events[0], BaseEvent):
+            raise NameError("Es ist nicht möglich übers BaseEvent zu interpolieren")
+        
     def linearValueInterpolation(self, data, n):
         time = []
         val = []
@@ -14,24 +28,27 @@ class Interpolator:
             
         return self._linearInterpolation(time, val, n)
 
-    def linearSummeInterpolation(self,  data, n):
+    def linearSumInterpolation(self, events, n):
         time = []
-        summe = []
-        for (t, e, v, s) in data:
-            if s == None:
+        sum = []
+        for event in events:
+            if event.getSum() == None:
                 raise NameError('Kein Value sollte während einer Interpolation None sein')
             
-            time.append(t)
-            summe.append(s)
+            time.append(event.getTime())
+            sum.append(event.getSum())
             
-        return self._linearInterpolation(time, summe, n)
+        return self._linearInterpolation(time, sum, n)
 
     def _linearInterpolation(self, time, val, n):
         timeReference = time[0]
         I = (time[len(time) - 1] - timeReference) / Decimal('{}'.format(n - 1))
         D = Decimal('0')
-        result = []
-        result.append((time[0], val[0]))
+        interpolatedTime = []
+        interpolatedValue = []
+
+        interpolatedTime.append(time[0])
+        interpolatedValue.append(val[0])
 
         counter = Decimal('1')
         
@@ -43,20 +60,18 @@ class Interpolator:
                 while sum >= I:
                     loopCounter = loopCounter + 1
                     newVal = val[i-1] + (((timeReference + counter * I) - time[i - 1]) / d) * (val[i] - val[i-1])
-                    #print("New Val calc: {} + (({} * {} - {}) / {}) * ({} - {})".format(
-                         #val[i-1], counter, I, time[i-1], d, val[i], val[i-1]))
-                    #newVal = val[i-1] + ((I - D) / d) * (val[i] - val[i-1])
-                    #print("New Val", float(newVal))
-                    result.append((timeReference + (counter * I), newVal))
+                    interpolatedTime.append(timeReference + (counter * I))
+                    interpolatedValue.append(newVal)
                     counter = counter + Decimal('1')
                     sum = sum - I
-                    #print("Sum - I = ", sum)
                     if sum < I:
                         D = D + d - (loopCounter * I)
-                    #print("Calculated")
             else:
                 D = D + d
 
+        result = []
+        result.append(interpolatedTime)
+        result.append(interpolatedValue)
         return result
 
 if __name__ == '__main__':
