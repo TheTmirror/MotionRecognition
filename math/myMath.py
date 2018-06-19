@@ -5,16 +5,16 @@ getcontext().prec = 15
 
 class Interpolator:
 
-    def linearValueInterpolation(data, n):
+    def linearValueInterpolation(self, data, n):
         time = []
         val = []
         for (t, e, v, s) in data:
             time.append(t)
             val.append(v)
             
-        return _linearInterpolation(time, val, n)
+        return self._linearInterpolation(time, val, n)
 
-    def linearSummeInterpolation(data, n):
+    def linearSummeInterpolation(self,  data, n):
         time = []
         summe = []
         for (t, e, v, s) in data:
@@ -24,9 +24,9 @@ class Interpolator:
             time.append(t)
             summe.append(s)
             
-        return _linearInterpolation(time, summe, n)
+        return self._linearInterpolation(time, summe, n)
 
-    def _linearInterpolation(time, val, n):
+    def _linearInterpolation(self, time, val, n):
         timeReference = time[0]
         I = (time[len(time) - 1] - timeReference) / Decimal('{}'.format(n - 1))
         D = Decimal('0')

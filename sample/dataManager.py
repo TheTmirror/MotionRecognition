@@ -56,94 +56,53 @@ class DataManager:
         fExEvent = open(self.eventPathExcelFormat, 'w')
 
         for (t, e, v, summe) in data:
-            self.__saveTimes(t, fPiTime, fExTime)
-            self.__saveValues(v, fPiValue, fExValue)
-            self.__saveSummen(summe, fPiSumme, fExSumme)
-            self.__saveEvents(e, fPiEvent, fExEvent)
+            self._saveData(t, fPiTime, fExTime)
+            self._saveData(v, fPiValue, fExValue)
+            self._saveData(summe, fPiSumme, fExSumme)
+            self._saveData(e, fPiEvent, fExEvent)
 
         fPiTime.close()
         fPiValue.close()
         fPiSumme.close()
         fPiEvent.close()
+        
         fExTime.close()
         fExValue.close()
         fExSumme.close()
         fExEvent.close()
 
-    def saveTimes(self, time):
-        self._saveTimes(time, self.timePathPiFormat, self.timePathExcelFormat)
-    
-    def _saveTimes(self, time, piPath, exPath):
-        fPi = open(piPath, 'w')
-        fEx = open(exPath, 'w')
+    def saveTimes(self, times):
+        return self.saveData(times, self.timePathPiFormat, self.timePathExcelFormat)
 
-        for t in time:
-            self.__saveTimes(t, fPi, fEx)
+    def saveEvents(self, events):
+        return self.saveData(events, self.eventPathPiFormat, self.eventPathExcelFormat)
 
-        fPi.close()
-        fEx.close()
+    def saveValues(self, values):
+        return self.saveData(values, self.valuePathPiFormat, self.valuePathExcelFormat)
 
-    def __saveTimes(self, time, fPi, fEx):
-        tStringPi = "{}\n".format(time)
-        tStringEx = tStringPi.replace(".", ",")
-        fPi.write(tStringPi)
-        fEx.write(tStringEx)
-
-    def saveValues(self, val):
-        self._saveValues(val, self.valuePathPiFormat, self.valuePathExcelFormat)
+    def saveSummen(self, summen):
+        return self.saveData(summen, self.summePathPiFormat, self.summePathExcelFormat)
         
-    def _saveValues(self, val, piPath, exPath):
+    def saveData(self, data, piPath, exPath = None):
         fPi = open(piPath, 'w')
-        fEx = open(exPath, 'w')
+        fEx = None
+        if exPath != None:        
+            fEx = open(exPath, 'w')
 
-        for v in val:
-            self.__saveValues(v, fPi, fEx)
+        for d in data:
+            self._saveData(d, fPi, fEx)
 
         fPi.close()
-        fEx.close()
+        if exPath != None:
+            fEx.close()
 
-    def __saveValues(self, val, fPi, fEx):
-        vStringPi = "{}\n".format(val)
-        vStringEx = vStringPi.replace(".", ",")
-        fPi.write(vStringPi)
-        fEx.write(vStringEx)
+    def _saveData(self, data, fPi, fEx):
+        stringPi = "{}\n".format(data)
+        fPi.write(stringPi)
 
-    def saveSummen(self, summe):
-        self._saveSummen(summe, self.summePathPiFormat, self.summePathExcelFormat)
-
-    def _saveSummen(self, summe, piPath, exPath):
-        fPi = open(piPath, 'w')
-        fEx = open(exPath, 'w')
-
-        for s in summe:
-            self.__saveSummen(s, fPi, fEx)
-
-        fPi.close()
-        fEx.close()
-
-    def __saveSummen(self, summe, fPi, fEx):
-        sStringPi = "{}\n".format(summe)
-        sStringEx = sStringPi.replace(".", ",")
-        fPi.write(sStringPi)
-        fEx.write(sStringEx)
-
-    def saveEvents(self, event):
-        self._saveEvents(event, self.eventPathPiFormat, self.eventPathExcelFormat)
-
-    def _saveEvents(self, event, piPath, exPath):
-        fPi = open(piPath, 'w')
-        fEx = open(exPath, 'w')
-
-        for e in event:
-            self.__saveEvents(e, fPi, fEx)
-
-        fPi.close()
-        fEx.close()
-
-    def __saveEvents(self, event, fPi, fEx):
-        eString = "{}\n".format(event)
-        fPi.write(eString)
-        fEx.write(eString)
+        if fEx != None:
+            stringEx = stringPi.replace(".", ",")
+            fEx.write(stringEx)
 
     def getAllData(self):
         time = self.getTimes()
@@ -157,53 +116,57 @@ class DataManager:
 
         return data
 
-    def getTimes(self):
-        fPi = open(self.timePathPiFormat, 'r')
-        time = []
-        
-        for line in fPi:
-            line = line[:len(line) - 1]
-            time.append(Decimal(line))
+    #Returns Array with found data as strings
+    def getData(self, path):
+        f = open(path, 'r')
+        result = []
 
-        fPi.close()
-        
-        return time
+        for line in f:
+            line = line[:len(line)-1]
+            result.append(line)
 
-    def getValues(self):
-        fPi = open(self.valuePathPiFormat, 'r')
-        value = []
+        f.close()
         
-        for line in fPi:
-            line = line[:len(line) - 1]
-            value.append(Decimal(line))
-
-        fPi.close()
+        return result
         
-        return value
 
-    def getSummen(self):
-        fPi = open(self.summePathPiFormat, 'r')
+    def getTimes(self, path = None):
+        if path == None:
+            path = self.timePathPiFormat
+        result = self.getData(path)
+        times = []
+
+        for res in result:
+            times.append(Decimal(res))
+
+        return times
+
+    def getValues(self, path = None):
+        if path == None:
+            path = self.valuePathPiFormat
+        result = self.getData(path)
+        values = []
+
+        for res in result:
+            values.append(Decimal(res))
+
+        return values
+
+    def getSummen(self, path = None):
+        if path == None:
+            path = self.summePathPiFormat
+        result = self.getData(path)
         summen = []
-        
-        for line in fPi:
-            line = line[:len(line) - 1]
-            summen.append(Decimal(line))
 
-        fPi.close()
-        
+        for res in result:
+            summen.append(Decimal(res))
+
         return summen
 
-    def getEvents(self):
-        fPi = open(self.eventPathPiFormat, 'r')
-        event = []
-        
-        for line in fPi:
-            line = line[:len(line) - 1]
-            event.append(line)
-
-        fPi.close()
-        
-        return event
+    def getEvents(self, path = None):
+        if path == None:
+            path = self.eventPathPiFormat
+        return self.getData(path)
 
 if __name__ == '__main__':
     dm = DataManager()
