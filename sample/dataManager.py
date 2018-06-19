@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import sys
 sys.path.insert(0, '/home/pi/Desktop/Updated Project')
 
@@ -99,6 +100,8 @@ class DataManager:
                 event = ButtonEvent(time, value)
 
             motion.addEvent(event)
+
+        print("Länge: ", len(motion.getEvents()))
 
         return motion     
 

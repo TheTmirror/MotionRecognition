@@ -25,7 +25,7 @@ class Controller:
         listenerThread = mcListener.MicroControllerListener(self.signals, signalsLock)
         #recognizerThread = motionRecognizer.MotionRecognizer(self.signals, signalsLock, self.devices)
         detectionThread = MotionDetecter(self.signals, signalsLock,
-                                         MotionDetecter.MODE_LEARNING)
+                                         MotionDetecter.MODE_RECOGNITION)
         
         listenerThread.start()
         #recognizerThread.start()

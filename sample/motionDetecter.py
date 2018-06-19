@@ -4,6 +4,9 @@ import sys
 sys.path.insert(0, '/home/pi/Desktop/Griffin')
 from pypowermate import powermate
 
+sys.path.insert(0, '/home/pi/Desktop/Updated Project/math')
+from myMath import Interpolator, Calculator
+
 from motion import Motion
 from events import BaseEvent, RotationEvent, ButtonEvent
 from events import EVENT_BASE, EVENT_ROTATE, EVENT_BUTTON
@@ -35,6 +38,7 @@ class MotionDetecter(threading.Thread):
         try:
             os.chdir(self.TEMPLATES_PATH)
         except FileNotFoundError:
+            print("Could not load Motions")
             return
 
         #For jede Geste
@@ -43,8 +47,8 @@ class MotionDetecter(threading.Thread):
             if os.path.isdir(filePath):
                 continue
 
-                motion = dm.getMotion(filePath)
-                self.motions.append(motion)
+            motion = dm.getMotion(filePath)
+            self.motions.append(motion)
 
         os.chdir(oldPath)
 
@@ -58,7 +62,26 @@ class MotionDetecter(threading.Thread):
         print('Jetzt bitte Geste ausführen und mit Doppelklick bestätigen')
         self.waitForDoubleClick()
 
-        motion = self.transformMotion()
+        motionToCompare = self.transformMotion()
+
+        c = Calculator()
+        leastDifferenceMotion = None
+        leastDifference = None
+        print(len(self.motions))
+        for motion in self.motions:
+            avgDifference = c.getMotionDifference(motion, motionToCompare)
+            print("Difference with '{}': {}".format(motion.getAssociatedDevice(), avgDifference))
+            
+            if leastDifferenceMotion == None:
+                leastDifferenceMotion = motion
+                leastDifference = avgDifference
+                continue
+
+            if avgDifference < leastDifference:
+                leastDifferenceMotion = motion
+                leastDifference = avgDifference
+
+        print("Motion für Device {} erkannt".format(leastDifferenceMotion.getAssociatedDevice()))
 
     def startLearning(self):
         self.signalsLock.acquire()
@@ -69,7 +92,10 @@ class MotionDetecter(threading.Thread):
 
         self.waitForDoubleClick()
 
+        name = input('Wie soll die Motion heißen?')
+
         motion = self.transformMotion()
+        motion.associate(name)
 
         self.saveMotion(motion)
 
@@ -94,10 +120,6 @@ class MotionDetecter(threading.Thread):
 
     #Should be reuseable
     def transformMotion(self):
-        import sys
-        sys.path.insert(0, '/home/pi/Desktop/Updated Project/math')
-        from myMath import Interpolator
-
         interpolator = Interpolator()
         n = 64
 
