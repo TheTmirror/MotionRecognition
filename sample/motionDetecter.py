@@ -65,23 +65,22 @@ class MotionDetecter(threading.Thread):
         motionToCompare = self.transformMotion()
 
         c = Calculator()
-        leastDifferenceMotion = None
-        leastDifference = None
-        print(len(self.motions))
+        bestMotion = None
+        bestScore = None
         for motion in self.motions:
-            avgDifference = c.getMotionDifference(motion, motionToCompare)
-            print("Difference with '{}': {}".format(motion.getAssociatedDevice(), avgDifference))
-            
-            if leastDifferenceMotion == None:
-                leastDifferenceMotion = motion
-                leastDifference = avgDifference
-                continue
+            matchingScore = c.getMatchingScore(motion, motionToCompare)
+            print("Matching Score with '{}': {}".format(motion.getAssociatedDevice(), matchingScore))
 
-            if avgDifference < leastDifference:
-                leastDifferenceMotion = motion
-                leastDifference = avgDifference
+            if bestMotion == None:
+                  bestScore = matchingScore
+                  bestMotion = motion
+                  continue
 
-        print("Motion für Device {} erkannt".format(leastDifferenceMotion.getAssociatedDevice()))
+            if matchingScore > bestScore:
+                  bestScore = matchingScore
+                  bestMotion = motion
+
+        print("Motion für Device {} erkannt".format(bestMotion.getAssociatedDevice()))
 
     def startLearning(self):
         self.signalsLock.acquire()
@@ -123,11 +122,13 @@ class MotionDetecter(threading.Thread):
         interpolator = Interpolator()
         n = 64
 
-        #Filter for interpolation
         recordedRotations = []
+        recordedButtons = []
         for event in self.signalsCopy:
             if isinstance(event, RotationEvent):
                 recordedRotations.append(event)
+            elif isinstance(event, ButtonEvent):
+                recordedButtons.append(event)
             else:
                 pass
 
@@ -141,18 +142,48 @@ class MotionDetecter(threading.Thread):
         transformedSum = result[1]
 
         for i in range(len(transformedTime)):
-            if i == 0:
-                event = RotationEvent(transformedTime[i], transformedSum[i], transformedSum[i])
-                transformedMotion.addEvent(event)
-                continue
-            
-            value = transformedSum[i] - transformedSum[i-1]
-            event = RotationEvent(transformedTime[i], value, transformedSum[i])
+            event = RotationEvent(transformedTime[i], None, transformedSum[i])
             transformedMotion.addEvent(event)
 
         #Other Parts of Motion
-            
+        for event in recordedButtons:
+            transformedMotion.addEvent(event)
+
+        #Scaling and adjustment
+        self.scaleMotion(transformedMotion)
+        self.adjustValues(transformedMotion)
+        
         return transformedMotion
+
+    def scaleMotion(self, motion):
+        from decimal import Decimal, getcontext
+        getcontext().prec = 15
+        
+        #Find Max RotationValue
+        maxValue = None
+        for event in motion.getEvents():
+            if isinstance(event, RotationEvent):
+                if maxValue == None:
+                    maxValue = abs(event.getSum())
+                elif maxValue < abs(event.getSum()):
+                    maxValue = abs(event.getSum())
+
+        for event in motion.getEvents():
+            if isinstance(event, RotationEvent):
+                event.sum = event.sum * (Decimal('400') / maxValue)
+
+    def adjustValues(self, motion):
+        rotationEvents = []
+        
+        for event in motion.getEvents():
+            if isinstance(event, RotationEvent):
+                rotationEvents.append(event)
+
+        for i in range(len(rotationEvents)):
+            if i == 0:
+                rotationEvents[i].value = rotationEvents[i].getSum()
+            else:
+                rotationEvents[i].value = rotationEvents[i].getSum() - rotationEvents[i-1].getSum()
 
     def waitForDoubleClick(self):
         timeout = 0.5
@@ -175,6 +206,7 @@ class MotionDetecter(threading.Thread):
             if event.getEvent() == EVENT_BUTTON and event.getValue() == 0:
                 if clickTime != None and (event.getTime() - clickTime) <= timeout:
                     self.saveCopyOfSignals()
+                    self.clearDoubleClick(self.signalsCopy)
                     del self.signals[:]
                     self.signalsLock.release()
                     break
@@ -187,5 +219,15 @@ class MotionDetecter(threading.Thread):
     #ATTENTION! LOCK MUST BE REQUIRED FIRST!!!
     def saveCopyOfSignals(self):
         self.signalsCopy = self.signals[:]
-        
+
+    def clearDoubleClick(self, signals):
+        removedButtonEvents = 0
+        for i in range(len(signals)-1, -1, -1):
+            if removedButtonEvents == 4:
+                break
+            
+            event = signals[i]
+            if isinstance(event, ButtonEvent):
+                del signals[i]
+                removedButtonEvents = removedButtonEvents + 1        
             

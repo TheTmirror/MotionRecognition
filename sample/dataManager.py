@@ -86,10 +86,16 @@ class DataManager:
             event = line[line.find("Event:")+len("Event:"):line.find(";")]
             line = line[line.find(";")+1:]
             value = line[line.find("Value:")+len("Value:"):line.find(";")]
-            value = Decimal(value)
+            if value == 'None':
+                value = None
+            else:
+                value = Decimal(value)
             line = line[line.find(";")+1:]
             sum = line[line.find("Sum:")+len("Sum:"):line.find(";")]
-            sum = Decimal(sum)
+            if sum == 'None':
+                sum = None
+            else:
+                sum = Decimal(sum)
             line = line[line.find(";"):]
 
             if event == EVENT_BASE:
@@ -100,8 +106,6 @@ class DataManager:
                 event = ButtonEvent(time, value)
 
             motion.addEvent(event)
-
-        print("Länge: ", len(motion.getEvents()))
 
         return motion     
 

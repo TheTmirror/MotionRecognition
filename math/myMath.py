@@ -11,11 +11,55 @@ from events import EVENT_BASE, EVENT_ROTATE, EVENT_BUTTON
 
 from dataManager import DataManager
 
+class RecordingError(Exception):
+
+    def __init__(self, message):
+        self.message = message
+
 class Calculator:
+    def getMatchingScore(self, m1, m2):
+        oddRotation = Decimal('1') - self.getAverageRotationDifference(m1, m2) / Decimal('800')
+        oddButton = Decimal('1') - self.getAverageButtonDifference(m1, m2) / Decimal('1')
+
+        odds = oddRotation * oddButton
+        return oddButton
+    
     def getMotionDifference(self, m1, m2):
-        if len(m1.getEvents()) != len(m2.getEvents()):
-            raise NameError("Die beiden Motions haben nicht gleichviele Einträge.\n{} - {}".format(len(m1.getEvents()), len(m2.getEvents())))
+        if abs(len(m1.getEvents()) - len(m2.getEvents())) > 1:
+            raise RecordingError("Die Motions haben unterschiedliche Einträge")
         return self.getAverageRotationDifference(m1, m2)
+
+    def getAverageButtonDifference(self, m1, m2):
+        buttonEventsM1 = []
+        buttonEventsM2 = []
+
+        differences = []
+
+        for event in m1.getEvents():
+            if isinstance(event, ButtonEvent):
+                buttonEventsM1.append(event)
+
+        for event in m2.getEvents():
+            if isinstance(event, ButtonEvent):
+                buttonEventsM2.append(event)
+
+        if len(buttonEventsM1) < len(buttonEventsM2):
+            length = len(buttonEventsM1)
+        else:
+            length = len(buttonEventsM2)
+
+        #Falls der Button nie Benutzt wurde
+        if length == 0:
+            return Decimal('0')
+
+        for i in range(length):
+            differences.append(abs(buttonEventsM1[i].getValue() - buttonEventsM2[i].getValue()))
+
+        sum = Decimal('0')
+        for difference in differences:
+            sum = sum + difference
+
+        return sum / Decimal(len(buttonEventsM1))
 
     def getAverageRotationDifference(self, m1, m2):
         rotationEventsM1 = []
@@ -31,7 +75,12 @@ class Calculator:
             if isinstance(event, RotationEvent):
                 rotationEventsM2.append(event)
 
-        for i in range(len(rotationEventsM1)):
+        if len(rotationEventsM1) < len(rotationEventsM2):
+            length = len(rotationEventsM1)
+        else:
+            length = len(rotationEventsM2)
+
+        for i in range(length):
             differences.append(abs(rotationEventsM1[i].getSum() - rotationEventsM2[i].getSum()))
 
         sum = Decimal('0')
@@ -104,13 +153,18 @@ class Interpolator:
         result.append(interpolatedTime)
         result.append(interpolatedValue)
 
-        if len(result[0]) != 64:
-            dm = DataManager()
-            dm.saveTimes(time)
-            dm.saveValues(val)
-            raise NameError("Zu wenig Einträge nach der Interpolation!")
+        #if len(result[0]) != 64:
+        #    dm = DataManager()
+        #    dm.saveTimes(time)
+        #    dm.saveValues(val)
+        #    raise NameError("Zu wenig Einträge nach der Interpolation!")
         
         return result
+
+class NotEnoughEntriesException(Exception):
+
+    def __init__(self, message):
+        self.message = message
 
 if __name__ == '__main__':
     from motion import Motion
