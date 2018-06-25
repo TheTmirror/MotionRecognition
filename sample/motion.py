@@ -4,16 +4,34 @@ class Motion:
 
     def __init__(self):
         self.events = None
+        self.startTime = None
+        self.endTime = None
+        self.name = None
         self.associatedDevice = None
 
-    def isAssociated(self):
-        return self.associatedDevice != None
-
     def isEmpty(self):
-        if events == None:
-            return True
-        else:
+        if events != None and len(events) > 0:
             return False
+        else:
+            return True
+
+    def setStartTime(self, time):
+        self.startTime = time
+
+    def getStartTime(self):
+        return self.startTime
+
+    def setEndTime(self, time):
+        self.endTime = time
+
+    def getEndTime(self):
+        return self.endTime
+
+    def setName(self, name):
+        self.name = name
+
+    def getName(self):
+        return self.name
 
     def setEvents(self, events):
         self.events = events
@@ -24,8 +42,17 @@ class Motion:
 
         self.events.append(event)
 
+    def getEvents(self):
+        return self.events
+
     def associate(self, device):
         self.associatedDevice = device
+
+    def isAssociated(self):
+        return self.associatedDevice != None
+
+    def getAssociatedDevice(self):
+        return self.associatedDevice
 
     def equals(self, motion):
         eventsToCompare = motion.getEvents()
@@ -50,9 +77,3 @@ class Motion:
                     return False
 
         return True
-
-    def getEvents(self):
-        return self.events
-
-    def getAssociatedDevice(self):
-        return self.associatedDevice

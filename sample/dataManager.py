@@ -53,6 +53,7 @@ class DataManager:
     def saveMotion(self, motion, path):
         f = open(path, 'w')
 
+        f.write("Name:{};\n".format(motion.getName()))
         f.write("Device:{};\n".format(motion.getAssociatedDevice()))
 
         #String must always have form:
@@ -76,7 +77,10 @@ class DataManager:
         motion = Motion()
 
         for line in f:
-            if line[:len("Device")] == "Device":
+            if line[:len("Name")] == "Name":
+                motion.setName(line[len("Name:"):line.find(";")])
+                continue
+            elif line[:len("Device")] == "Device":
                 motion.associate(line[len("Device:"):line.find(";")])
                 continue
             

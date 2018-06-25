@@ -11,6 +11,8 @@ from motion import Motion
 from events import BaseEvent, RotationEvent, ButtonEvent
 from events import EVENT_BASE, EVENT_ROTATE, EVENT_BUTTON
 
+from transformer import MotionTransformer
+
 class MotionDetecter(threading.Thread):
 
     MODE_RECOGNITION = 'recognition'
@@ -62,14 +64,15 @@ class MotionDetecter(threading.Thread):
         print('Jetzt bitte Geste ausführen und mit Doppelklick bestätigen')
         self.waitForDoubleClick()
 
-        motionToCompare = self.transformMotion()
+        transformer = MotionTransformer()
+        motionToCompare = transformer.transformMotion(self.signalsCopy)
 
         c = Calculator()
         bestMotion = None
         bestScore = None
         for motion in self.motions:
             matchingScore = c.getMatchingScore(motion, motionToCompare)
-            print("Matching Score with '{}': {}".format(motion.getAssociatedDevice(), matchingScore))
+            print("Matching Score with '{}': {}".format(motion.getName(), matchingScore))
 
             if bestMotion == None:
                   bestScore = matchingScore
@@ -80,7 +83,10 @@ class MotionDetecter(threading.Thread):
                   bestScore = matchingScore
                   bestMotion = motion
 
-        print("Motion für Device {} erkannt".format(bestMotion.getAssociatedDevice()))
+        if bestMotion == None:
+            print("Es sind noch keine Motions angelernt")
+        else:
+            print("Motion {} für Device {} erkannt".format(bestMotion.getName(), bestMotion.getAssociatedDevice()))
 
     def startLearning(self):
         self.signalsLock.acquire()
@@ -93,8 +99,9 @@ class MotionDetecter(threading.Thread):
 
         name = input('Wie soll die Motion heißen?')
 
-        motion = self.transformMotion()
-        motion.associate(name)
+        transformer = MotionTransformer()
+        motion = transformer.transformMotion(self.signalsCopy)
+        motion.setName(name)
 
         self.saveMotion(motion)
 
@@ -116,74 +123,6 @@ class MotionDetecter(threading.Thread):
 
         dm.saveMotion(template, plainPath)
         print('Motion Saved')
-
-    #Should be reuseable
-    def transformMotion(self):
-        interpolator = Interpolator()
-        n = 64
-
-        recordedRotations = []
-        recordedButtons = []
-        for event in self.signalsCopy:
-            if isinstance(event, RotationEvent):
-                recordedRotations.append(event)
-            elif isinstance(event, ButtonEvent):
-                recordedButtons.append(event)
-            else:
-                pass
-
-        #Construct Motion
-        transformedMotion = Motion()
-        
-        #Rotation Part of Motion
-        result = interpolator.linearInterpolation(recordedRotations, n)
-
-        transformedTime = result[0]
-        transformedSum = result[1]
-
-        for i in range(len(transformedTime)):
-            event = RotationEvent(transformedTime[i], None, transformedSum[i])
-            transformedMotion.addEvent(event)
-
-        #Other Parts of Motion
-        for event in recordedButtons:
-            transformedMotion.addEvent(event)
-
-        #Scaling and adjustment
-        self.scaleMotion(transformedMotion)
-        self.adjustValues(transformedMotion)
-        
-        return transformedMotion
-
-    def scaleMotion(self, motion):
-        from decimal import Decimal, getcontext
-        getcontext().prec = 15
-        
-        #Find Max RotationValue
-        maxValue = None
-        for event in motion.getEvents():
-            if isinstance(event, RotationEvent):
-                if maxValue == None:
-                    maxValue = abs(event.getSum())
-                elif maxValue < abs(event.getSum()):
-                    maxValue = abs(event.getSum())
-
-        for event in motion.getEvents():
-            if isinstance(event, RotationEvent):
-                event.sum = event.sum * (Decimal('400') / maxValue)
-
-    def adjustValues(self, motion):
-        rotationEvents = []
-        
-        for event in motion.getEvents():
-            if isinstance(event, RotationEvent):
-                rotationEvents.append(event)
-
-        for i in range(len(rotationEvents)):
-            if i == 0:
-                rotationEvents[i].value = rotationEvents[i].getSum()
-            else:
-                rotationEvents[i].value = rotationEvents[i].getSum() - rotationEvents[i-1].getSum()
 
     def waitForDoubleClick(self):
         timeout = 0.5

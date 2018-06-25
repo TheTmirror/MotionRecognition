@@ -31,8 +31,8 @@ class MicroControllerListener(threading.Thread):
         
         while True:
             (time, event, val) = self.knob.read_event()
-            time = Decimal('{}'.format(time))
-            val = Decimal('{}'.format(val))
+            time = Decimal('{}'.format(time)).normalize()
+            val = Decimal('{}'.format(val)).normalize()
 
             if event == EVENT_ROTATE:
                 sum = Decimal(sum) + val
