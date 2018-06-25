@@ -23,7 +23,7 @@ class Calculator:
 
         odds = oddRotation * oddButton
         odds.normalize()
-        return oddButton
+        return odds
 
     def getAverageButtonDifference(self, m1, m2):
         buttonEventsM1 = []
