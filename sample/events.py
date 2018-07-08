@@ -5,6 +5,7 @@ from pypowermate import powermate
 EVENT_BASE = 'base'
 EVENT_ROTATE = powermate.Powermate.EVENT_ROTATE
 EVENT_BUTTON = powermate.Powermate.EVENT_BUTTON
+EVENT_TOUCH = 'touchEvent'
 
 class BaseEvent:
 
@@ -22,6 +23,24 @@ class BaseEvent:
 
     def getEvent(self):
         return self.event
+
+class TouchEvent(BaseEvent):
+
+    def __init__(self, time, location, value):
+        global EVENT_TOUCH
+        BaseEvent.__init__(self, time)
+        self.event = EVENT_TOUCH
+        self.location = location
+        self.value = value
+
+    def __repr__(self):
+        return "Time: {}\nEvent: {}\nLocation: {}\nValue: {}".format(self.time, self.event, self.location, self.value)
+
+    def getValue(self):
+        return self.value
+
+    def getLocation(self):
+        return self.location
 
 class RotationEvent(BaseEvent):
 
