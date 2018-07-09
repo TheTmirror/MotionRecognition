@@ -6,8 +6,8 @@ getcontext().prec = 15
 
 import sys
 sys.path.insert(0, '/home/pi/Desktop/Updated Project/sample')
-from events import BaseEvent, RotationEvent, ButtonEvent
-from events import EVENT_BASE, EVENT_ROTATE, EVENT_BUTTON
+from events import BaseEvent, RotationEvent, ButtonEvent, TouchEvent
+from events import EVENT_BASE, EVENT_ROTATE, EVENT_BUTTON, EVENT_TOUCH
 
 from dataManager import DataManager
 
@@ -105,8 +105,22 @@ class Interpolator:
             return self.linearSumInterpolation(events, n)
         elif isinstance(events[0], ButtonEvent):
             return self.linearButtonInterpolation(events, n)
+        elif isinstance(events[0], TouchEvent):
+            return self.linearTouchInterpolation(events, n)
         elif isinstance(events[0], BaseEvent):
             raise NameError("Es ist nicht möglich übers BaseEvent zu interpolieren")
+
+    def linearTouchInterpolation(self, events, n):
+        time = []
+        val = []
+        for event in events:
+            if event.getValue() == None:
+                raise NameError('Kein Value vorhanden')
+
+            time.append(event.getTime())
+            val.append(event.getValue())
+
+        return self._linearInterpolation(time, val, n)
         
     def linearButtonInterpolation(self, events, n):
         time = []
@@ -132,6 +146,9 @@ class Interpolator:
             
         return self._linearInterpolation(time, sum, n)
 
+    #Bug: Es kann passieren dass die Startzeit = der Endzeit ist.
+    #Dies ist der Fall wenn es zum Beispiel nur ein Touch Event gibt.
+    #Dann kann der Code nicht arbeiten. Was passiert dann?
     def _linearInterpolation(self, time, val, n):
         timeReference = time[0]
         I = (time[len(time) - 1] - timeReference) / Decimal('{}'.format(n - 1))

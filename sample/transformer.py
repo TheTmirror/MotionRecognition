@@ -3,14 +3,15 @@ sys.path.insert(0, '/home/pi/Desktop/Updated Project/math')
 from myMath import Interpolator, Calculator
 
 from motion import Motion
-from events import BaseEvent, RotationEvent, ButtonEvent
-from events import EVENT_BASE, EVENT_ROTATE, EVENT_BUTTON
+from events import BaseEvent, RotationEvent, ButtonEvent, TouchEvent
+from events import EVENT_BASE, EVENT_ROTATE, EVENT_BUTTON, EVENT_TOUCH
 
 class MotionTransformer:
 
     def __init__(self):
         self.recordedRotations = []
         self.recordedButtons = []
+        self.recordedTouches = []
 
     def transformMotion(self, signals):
         self.signals = signals
@@ -36,6 +37,8 @@ class MotionTransformer:
                 self.recordedRotations.append(event)
             elif isinstance(event, ButtonEvent):
                 self.recordedButtons.append(event)
+            elif isinstance(event, TouchEvent):
+                self.recordedTouches.append(event)
             else:
                 pass
 
@@ -58,7 +61,7 @@ class MotionTransformer:
 
         print("Rotations: {}".format(len(transformedTime)))
 
-        #Other Parts of Motion
+        #Button Part of Motion
         result = interpolator.linearInterpolation(self.recordedButtons, n)
 
         transformedTime = result[0]
@@ -69,6 +72,18 @@ class MotionTransformer:
             transformedMotion.addEvent(event)
 
         print("Buttons: {}".format(len(transformedTime)))
+
+        #Touch Part of Motion
+        result = interpolator.linearInterpolation(self.recordedTouches, n)
+
+        transformedTime = result[0]
+        transformedValue = result[1]
+                
+        for i in range(len(transformedTime)):
+            event = TouchEvent(transformedTime[i], None, transformedValue[i])
+            transformedMotion.addEvent(event)
+
+        print("Touches: {}".format(len(transformedTime)))
 
         #Scaling and adjustment
         self.scaleMotion(transformedMotion)
@@ -110,6 +125,19 @@ class MotionTransformer:
             newEvent = ButtonEvent(endTime, Decimal('0'))
             self.recordedButtons.append(newEvent)
 
+        if len(self.recordedTouches) > 0:
+            if self.recordedTouches[0].getTime() != startTime:
+                newEvent = TouchEvent(startTime, None, Decimal('0'))
+                self.recordedTouches.insert(0, newEvent)
+            if self.recordedTouches[len(self.recordedTouches)-1].getTime() != endTime:
+                newEvent = TouchEvent(endTime, None, Decimal('0'))
+                self.recordedTouches.append(newEvent)
+        else:
+            newEvent = TouchEvent(startTime, None, Decimal('0'))
+            self.recordedTouches.append(newEvent)
+            newEvent = TouchEvent(endTime, None, Decimal('0'))
+            self.recordedTouches.append(newEvent)
+
     def scaleMotion(self, motion):
         from decimal import Decimal, getcontext
         getcontext().prec = 15
@@ -123,11 +151,18 @@ class MotionTransformer:
                 elif maxValue < abs(event.getSum()):
                     maxValue = abs(event.getSum())
 
-        for event in motion.getEvents():
-            if isinstance(event, RotationEvent):
-                event.sum = event.sum * (Decimal('400') / maxValue)
-                event.sum = event.sum.normalize()
+        #Wenn keine Rotation vorhanden war, dann muss/kann nicht
+        #skaliert werden, da eh alle Werte = 0 sind.
+        if maxValue == Decimal('0'):
+            return
+        else:
+            for event in motion.getEvents():
+                if isinstance(event, RotationEvent):
+                    event.sum = event.sum * (Decimal('400') / maxValue)
+                    event.sum = event.sum.normalize()
 
+    #Zur Korrektur der Differenz der einzelnen Summen der Rotation
+    #Nachdem diese Transformiert wurden
     def adjustValues(self, motion):
         rotationEvents = []
         

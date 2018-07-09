@@ -32,6 +32,10 @@ class AboartEvent(BaseEvent):
         BaseEvent.__init__(self, time)
         self.event = EVENT_ABOART
 
+    def __repr__(self):
+        global EVENT_ABOART
+        return "Time: {}\nEvent: {}".format(self.time, EVENT_ABOART)
+
 class TouchEvent(BaseEvent):
 
     def __init__(self, time, location, value):

@@ -8,8 +8,8 @@ sys.path.insert(0, '/home/pi/Desktop/Updated Project/math')
 from myMath import Interpolator, Calculator
 
 from motion import Motion
-from events import BaseEvent, RotationEvent, ButtonEvent
-from events import EVENT_BASE, EVENT_ROTATE, EVENT_BUTTON
+from events import BaseEvent, AboartEvent, RotationEvent, ButtonEvent
+from events import EVENT_BASE, EVENT_ABOART, EVENT_ROTATE, EVENT_BUTTON
 
 from transformer import MotionTransformer
 
@@ -55,6 +55,7 @@ class MotionDetecter(threading.Thread):
         os.chdir(oldPath)
 
     def run(self):
+        print("Motion Detecter is running")
         if self.mode == self.MODE_RECOGNITION:
             self.startRecognition()
         elif self.mode == self.MODE_LEARNING:
@@ -93,9 +94,9 @@ class MotionDetecter(threading.Thread):
         del self.signals[:]
         self.signalsLock.release()
         
-        print('Jetzt bitte Geste ausführen und mit Doppelklick bestätigen')
+        print('Jetzt bitte Geste ausführen')
 
-        self.waitForDoubleClick()
+        self.waitForAboart()
 
         name = input('Wie soll die Motion heißen?')
 
@@ -123,6 +124,39 @@ class MotionDetecter(threading.Thread):
 
         dm.saveMotion(template, plainPath)
         print('Motion Saved')
+
+    def waitForAboart(self):
+        counter = 0
+
+        while True:
+            self.signalsLock.acquire()
+            if len(self.signals) <= counter:
+                self.signalsLock.release()
+                continue
+            event = self.signals[counter]
+
+            if event != None and event.getEvent() == EVENT_ABOART:
+                self.saveCopyOfSignals()
+                self.removeAboartEvent(self.signalsCopy)
+                self.removeNones(self.signalsCopy)
+                del self.signals[:]
+                self.signalsLock.release()
+                break
+
+            self.signalsLock.release()
+            counter = counter + 1
+
+    def removeAboartEvent(self, signals):
+        for i in range(len(signals)-1, -1, -1):
+            if signals[i].getEvent() == EVENT_ABOART:
+                del signals[i]
+                break
+
+    #Signales that triggered the aboart are marked as None
+    def removeNones(self, signals):
+        for i in range(len(signals)-1, -1, -1):
+            if signals[i] == None:
+                del signals[i]
 
     def waitForDoubleClick(self):
         timeout = 0.5

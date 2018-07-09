@@ -5,8 +5,8 @@ sys.path.insert(0, '/home/pi/Desktop/Updated Project')
 from decimal import Decimal, getcontext
 getcontext().prec = 15
 
-from events import BaseEvent, RotationEvent, ButtonEvent
-from events import EVENT_BASE, EVENT_ROTATE, EVENT_BUTTON
+from events import BaseEvent, RotationEvent, ButtonEvent, TouchEvent
+from events import EVENT_BASE, EVENT_ROTATE, EVENT_BUTTON, EVENT_TOUCH
 
 from motion import Motion
 
@@ -57,13 +57,15 @@ class DataManager:
         f.write("Device:{};\n".format(motion.getAssociatedDevice()))
 
         #String must always have form:
-        #Time, Event, Value, Sum
+        #Time, Event, Location, Value, Sum
         for event in motion.getEvents():
             string = "Time:{};Event:{};".format(event.getTime(), event.getEvent())
             if isinstance(event, RotationEvent):
-                string = string + "Value:{};Sum:{};".format(event.getValue(), event.getSum())
+                string = string + "Location:{};Value:{};Sum:{};".format(None, event.getValue(), event.getSum())
             elif isinstance(event, ButtonEvent):
-                string = string + "Value:{};Sum:{};".format(event.getValue(), None)
+                string = string + "Location:{};Value:{};Sum:{};".format(None, event.getValue(), None)
+            elif isinstance(event, TouchEvent):
+                string = string + "Location:{};Value:{};Sum:{};".format(event.getLocation(), event.getValue(), None)
             else:
                 raise NameError('Should not happen, just for safty')
 
@@ -89,6 +91,10 @@ class DataManager:
             line = line[line.find(";")+1:]
             event = line[line.find("Event:")+len("Event:"):line.find(";")]
             line = line[line.find(";")+1:]
+            location = line[line.find("Location:")+len("Location:"):line.find(";")]
+            line = line[line.find(";")+1:]
+            if location == 'None':
+                location = None
             value = line[line.find("Value:")+len("Value:"):line.find(";")]
             if value == 'None':
                 value = None
@@ -108,6 +114,8 @@ class DataManager:
                 event = RotationEvent(time, value, sum)
             elif event == EVENT_BUTTON:
                 event = ButtonEvent(time, value)
+            elif event == EVENT_TOUCH:
+                event = TouchEvent(time, location, value)
 
             motion.addEvent(event)
 

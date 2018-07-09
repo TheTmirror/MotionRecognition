@@ -31,13 +31,13 @@ class Controller:
         
         listenerThread.start()
         tThread.start()
-        #detectionThread.start()
+        detectionThread.start()
         
         listenerThread.join()
         tThread.join()
-        #detectionThread.join()
+        detectionThread.join()
 
-        print(self.signals)
+        #print(self.signals)
         
         print('Controller wird beendet')
 

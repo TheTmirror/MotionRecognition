@@ -24,8 +24,8 @@ class MicroControllerListener(threading.Thread):
     
     def startListening(self):
 
-        tapTimeStamp = None
-        timeout = 0.5
+        #tapTimeStamp = None
+        #timeout = 0.5
 
         sum = 0
         
@@ -40,17 +40,27 @@ class MicroControllerListener(threading.Thread):
             elif event == EVENT_BUTTON:
                 event = ButtonEvent(time, val)
 
-            if event.getEvent() == EVENT_BUTTON and event.getValue() == Decimal('0'):
-                print('Button Event')
-                if tapTimeStamp != None and (event.getTime() - tapTimeStamp) <= Decimal('{}'.format(timeout)):
-                    self.signalsLock.acquire()
-                    self.signals.append(event)
-                    self.signalsLock.release()
-                    print('Double Klicked')
-                    break
-                else:
-                    tapTimeStamp = event.getTime()
+            #if event.getEvent() == EVENT_BUTTON and event.getValue() == Decimal('0'):
+            #    print('Button Event')
+            #    if tapTimeStamp != None and (event.getTime() - tapTimeStamp) <= Decimal('{}'.format(timeout)):
+            #        self.signalsLock.acquire()
+            #        #self.signals.append(event)
+            #        self.aboart()
+            #        self.signalsLock.release()
+            #        break
+            #    else:
+            #        tapTimeStamp = event.getTime()
             
             self.signalsLock.acquire()
             self.signals.append(event)
             self.signalsLock.release()
+
+    #ATTENTION NOT THREAD SAFE! LOCK ME REQUIRED BEFORE AND RELEASED AFTER
+    def aboart(self):
+        counter = 0
+        for i in range(len(self.signals)-1, -1, -1):
+            if self.signals[i].getEvent() == EVENT_BUTTON and counter < 3:
+                self.signals[i] = None
+                counter = counter + 1
+            elif counter == 3:
+                break

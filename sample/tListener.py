@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import threading
 import sys
 import serial
@@ -6,7 +7,8 @@ import time
 from decimal import Decimal, getcontext
 getcontext().prec = 15
 
-from events import TouchEvent, EVENT_TOUCH
+from events import BaseEvent, AboartEvent, TouchEvent
+from events import EVENT_BASE, EVENT_ABOART, EVENT_TOUCH
 
 class TouchListener(threading.Thread):
 
@@ -17,27 +19,26 @@ class TouchListener(threading.Thread):
         threading.Thread.__init__(self)
         self.signals = signals
         self.signalsLock = signalsLock
-        try:
-            self.ser = serial.Serial(self.usbPath, self.baudrate)
-            self.ser.flush()
-        except:
-            print("Something went wrong")
+        
+        self.ser = serial.Serial(self.usbPath, self.baudrate)
+        self.ser.flush()
+
+        self.setupArduino()
     
     def run(self):
-        print('Starting Listening Thread')
-        self.setupArduino()
+        print('TouchListener is running')
         self.startListening()
 
     def setupArduino(self):
+        print("Setting Up Arduino")
         while True:
             text = self.convertText(self.ser.readline())
             if text == "TIME_REQUEST":
                 break
             else:
-                print("WRONG TEXT")
-                print(text)
+                raise NameError("Wrong Text!\n Es wurde etwas zurückgeliefert was nicht erwartet war.\nText:\n{}".format(text))
         self.ser.write("T{}".format(time.time()).encode())
-        print("Done")
+        print("Arduino is Ready")
     
     def startListening(self):
         tapTimeStamp = None
@@ -58,7 +59,7 @@ class TouchListener(threading.Thread):
             time = Decimal('{}'.format(time)).normalize()
             val = Decimal('{}'.format(val)).normalize()
 
-            print("Time: {}\nEvent: {}\nLocation: {}\nValue: {}".format(time, event, location, val));
+            #print("Time: {}\nEvent: {}\nLocation: {}\nValue: {}".format(time, event, location, val));
             
             if event == EVENT_TOUCH:
                 event = TouchEvent(time, location, val)
@@ -66,10 +67,9 @@ class TouchListener(threading.Thread):
             if event.getEvent() == EVENT_TOUCH and event.getValue() == Decimal('0'):
                 if tapTimeStamp != None and (event.getTime() - tapTimeStamp) <= Decimal('{}'.format(timeout)):
                     self.signalsLock.acquire()
-                    self.signals.append(event)
+                    #self.signals.append(event)
+                    self.aboart()
                     self.signalsLock.release()
-                    print('Double Touched')
-                    
                     break
                 else:
                     tapTimeStamp = event.getTime()
@@ -78,15 +78,20 @@ class TouchListener(threading.Thread):
             self.signals.append(event)
             self.signalsLock.release()
 
+    #ATTENTION NOT THREAD SAFE! LOCK ME REQUIRED BEFORE AND RELEASED AFTER
+    def aboart(self):
+        aboartEvent = AboartEvent(time.time())
+        self.signals.append(aboartEvent)
+        
+        counter = 0
+        for i in range(len(self.signals)-1, -1, -1):
+            if self.signals[i].getEvent() == EVENT_TOUCH and counter < 3:
+                self.signals[i] = None
+                counter = counter + 1
+            elif counter == 3:
+                break
+
     def convertText(self, text = None):
             text = text[:len(text)-2]
             text = text.decode('utf-8')
             return text
-
-    def debug(self):
-        while True:
-            print(self.ser.readline())
-
-if __name__ == '__main__':
-    t = TouchListener([], threading.Lock())
-    t.run()
