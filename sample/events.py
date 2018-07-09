@@ -6,6 +6,7 @@ EVENT_BASE = 'base'
 EVENT_ROTATE = powermate.Powermate.EVENT_ROTATE
 EVENT_BUTTON = powermate.Powermate.EVENT_BUTTON
 EVENT_TOUCH = 'touchEvent'
+EVENT_ABOART = 'aboartEvent'
 
 class BaseEvent:
 
@@ -23,6 +24,13 @@ class BaseEvent:
 
     def getEvent(self):
         return self.event
+
+class AboartEvent(BaseEvent):
+
+    def __init__(self, time):
+        global EVENT_ABOART
+        BaseEvent.__init__(self, time)
+        self.event = EVENT_ABOART
 
 class TouchEvent(BaseEvent):
 
