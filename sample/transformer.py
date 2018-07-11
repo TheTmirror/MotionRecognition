@@ -42,6 +42,9 @@ class MotionTransformer:
             else:
                 pass
 
+        if startTime is None or endTime is None:
+            raise NotEnoughSignals()
+
         #Construct Motion
         transformedMotion = Motion()
         transformedMotion.setStartTime(startTime)
@@ -177,3 +180,6 @@ class MotionTransformer:
             else:
                 rotationEvents[i].value = rotationEvents[i].getSum() - rotationEvents[i-1].getSum()
                 rotationEvents[i].value = rotationEvents[i].value.normalize()
+
+class NotEnoughSignals(Exception):
+    pass

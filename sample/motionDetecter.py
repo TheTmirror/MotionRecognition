@@ -11,7 +11,7 @@ from motion import Motion
 from events import BaseEvent, AboartEvent, RotationEvent, ButtonEvent
 from events import EVENT_BASE, EVENT_ABOART, EVENT_ROTATE, EVENT_BUTTON
 
-from transformer import MotionTransformer
+from transformer import MotionTransformer, NotEnoughSignals
 
 class MotionDetecter(threading.Thread):
 
@@ -98,10 +98,14 @@ class MotionDetecter(threading.Thread):
 
         self.waitForAboart()
 
-        name = input('Wie soll die Motion heißen?')
-
         transformer = MotionTransformer()
-        motion = transformer.transformMotion(self.signalsCopy)
+        try :
+            motion = transformer.transformMotion(self.signalsCopy)
+        except NotEnoughSignals:
+            print("Die Geste beinhaltet keine Aktionen. Sie wird nicht gespeichert")
+            return
+
+        name = input('Wie soll die Motion heißen?')
         motion.setName(name)
 
         self.saveMotion(motion)
