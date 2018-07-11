@@ -29,15 +29,18 @@ class TouchListener(threading.Thread):
         print('TouchListener is running')
         self.startListening()
 
-    def setupArduino(self):
+    def setupArduino(self, timeout = 10):
+        t0 = time.time()
+
         print("Setting Up Arduino")
         while True:
-            text = self.convertText(self.ser.readline())
-            if text == "TIME_REQUEST":
-                break
-            else:
-                raise NameError("Wrong Text!\n Es wurde etwas zurückgeliefert was nicht erwartet war.\nText:\n{}".format(text))
-        self.ser.write("T{}".format(time.time()).encode())
+            if time.time() - t0 >= timeout:
+                raise NameError("Es gab einen Timeout beim Setup")
+            if self.ser.inWaiting() > 0:
+                text = self.convertText(self.ser.readline())
+                if text.find("TIME_REQUEST") != -1:
+                    break
+        self.synchronizeTime()
         print("Arduino is Ready")
     
     def startListening(self):
@@ -45,10 +48,17 @@ class TouchListener(threading.Thread):
         timeout = 0.5
 
         sum = 0
-        
+
         while True:
             input = self.ser.readline()
             input = self.convertText(input)
+
+            index = input.find("TIME_REQUEST")
+
+            if index != -1:
+                self.synchronizeTime()
+                continue
+            
             time = input[:input.find(';')]
             input = input[input.find(';')+1:]
             event = input[:input.find(';')]
@@ -95,3 +105,6 @@ class TouchListener(threading.Thread):
             text = text[:len(text)-2]
             text = text.decode('utf-8')
             return text
+
+    def synchronizeTime(self):
+        self.ser.write("T{}".format(time.time()).encode())
