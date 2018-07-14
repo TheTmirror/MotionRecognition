@@ -41,12 +41,12 @@
 ///////////////////////////
 // NOISE CANCELLATION /////
 ///////////////////////////
-#define SWITCH_THRESHOLD_OFFSET_PERC  5    // number between 1 and 49
+#define SWITCH_THRESHOLD_OFFSET_PERC  2    // number between 1 and 49
                                            // larger value protects better against noise oscillations, but makes it harder to press and release
                                            // recommended values are between 2 and 20
                                            // default value is 5
 
-#define SWITCH_THRESHOLD_CENTER_BIAS 55   // number between 1 and 99
+#define SWITCH_THRESHOLD_CENTER_BIAS 30   // number between 1 and 99
                                           // larger value makes it easier to "release" keys, but harder to "press"
                                           // smaller value makes it easier to "press" keys, but harder to "release"
                                           // recommended values are between 30 and 70
@@ -73,21 +73,10 @@
 #define MOUSE_MAX_PIXELS              10   // Max pixels per step for mouse movement
 
 #define BUFFER_LENGTH    3     // 3 bytes gives us 24 samples
-#define NUM_INPUTS       2    // 2 for testing
+#define NUM_INPUTS       5    // 2 for testing
 //#define TARGET_LOOP_TIME 694   // (1/60 seconds) / 24 samples = 694 microseconds per sample 
 //#define TARGET_LOOP_TIME 758  // (1/55 seconds) / 24 samples = 758 microseconds per sample 
-#define TARGET_LOOP_TIME 744  // (1/56 seconds) / 24 samples = 744 microseconds per sample 
-
-// id numbers for mouse movement inputs (used in settings.h)
-#define MOUSE_MOVE_UP       -1 
-#define MOUSE_MOVE_DOWN     -2
-#define MOUSE_MOVE_LEFT     -3
-#define MOUSE_MOVE_RIGHT    -4
-
-/*#if (ARDUINO > 10605)
-  #include <Keyboard.h>
-  #include <Mouse.h>
-#endif*/
+#define TARGET_LOOP_TIME 744  // (1/56 seconds) / 24 samples = 744 microseconds per sample
 //#include "settings.h"
 
 /////////////////////////
@@ -101,9 +90,6 @@ typedef struct {
   byte bufferSum;
   boolean pressed;
   boolean prevPressed;
-  boolean isMouseMotion;
-  boolean isMouseButton;
-  boolean isKey;
 } 
 MakeyMakeyInput;
 
@@ -115,7 +101,6 @@ MakeyMakeyInput inputs[NUM_INPUTS];
 int bufferIndex = 0;
 byte byteCounter = 0;
 byte bitCounter = 0;
-int mouseMovementCounter = 0; // for sending mouse movement events at a slower interval
 
 int pressThreshold;
 int releaseThreshold;
@@ -126,15 +111,15 @@ int mouseHoldCount[NUM_INPUTS]; // used to store mouse movement hold data
 // Pin Numbers
 // input pin numbers for kickstarter production board
 int pinNumbers[NUM_INPUTS] = {
-  2, 4
+  7, 8, 9, 10, 11
+};
+
+int leds[NUM_INPUTS] = {
+  2, 3, 4, 5, 6
 };
 
 // input status LED pin numbers
-const int led = 8;
-const int timeLed = 9;
-const int inputLED_a = 9;
-const int inputLED_b = 10;
-const int inputLED_c = 11;
+const int timeLed = 12;
 const int outputK = 14;
 const int outputM = 16;
 byte ledCycleCounter = 0;
@@ -154,6 +139,7 @@ void initializeArduino();
 void initializeInputs();
 void blink();
 void warnBlink();
+void updateLeds();
 /*void updateMeasurementBuffers();
 void updateBufferSums();
 void updateBufferIndex();
@@ -171,7 +157,7 @@ void setup()
 {
   initializeArduino();
   initializeInputs();
-  blink();
+  //blink();
 }
 
 ////////////////////
@@ -193,6 +179,7 @@ void loop()
   updateBufferSums();
   updateBufferIndex();
   updateInputStates();
+  updateLeds();
   addDelay();
 }
 
@@ -209,9 +196,10 @@ void initializeArduino() {
   {
     pinMode(pinNumbers[i], INPUT);
     digitalWrite(pinNumbers[i], LOW);
+
+    pinMode(leds[i], OUTPUT);
   }
 
-  pinMode(led, OUTPUT);
   pinMode(timeLed, OUTPUT);
 
 #ifdef DEBUG
@@ -248,10 +236,6 @@ void initializeInputs() {
 
     inputs[i].pressed = false;
     inputs[i].prevPressed = false;
-
-    inputs[i].isMouseMotion = false;
-    inputs[i].isMouseButton = false;
-    inputs[i].isKey = true;
     
 #ifdef DEBUG
     Serial.println(i);
@@ -265,13 +249,13 @@ void initializeInputs() {
 ///////////////////////////
 void blink()
 {
-  for(int i = 0; i < 2; i++)
+  /*for(int i = 0; i < 2; i++)
   {
     digitalWrite(led, HIGH);
     delay(750);
     digitalWrite(led, LOW);
     delay(250);
-  }
+  }*/
 }
 
 ///////////////////////////
@@ -285,6 +269,19 @@ void warnBlink()
     delay(250);
     digitalWrite(timeLed, LOW);
     delay(250);
+  }
+}
+
+///////////////////////////
+// UPDATELEDS BLINK
+///////////////////////////
+void updateLeds() {
+  for(int i = 0; i < NUM_INPUTS; i++) {
+    if(inputs[i].pressed) {
+      digitalWrite(leds[i], HIGH);
+    } else {
+      digitalWrite(leds[i], LOW);
+    }
   }
 }
 
@@ -363,39 +360,29 @@ void updateInputStates() {
       if (inputs[i].bufferSum < releaseThreshold) {  
         inputChanged = true;
         inputs[i].pressed = false;
-        if (inputs[i].isKey) {
-          //Keyboard.release(inputs[i].keyCode);
+        //Keyboard.release(inputs[i].keyCode);
 
-          Serial.print(now() );
-          Serial.print(";touchEvent;");
-          Serial.print(inputs[i].keyCode);
-          Serial.print(";");
-          Serial.print(0);
-          Serial.println(";");
-          //Serial.println(inputs[i].keyCode);
-        }
-        if (inputs[i].isMouseMotion) {  
-          mouseHoldCount[i] = 0;  // input becomes released, reset mouse hold
-        }
-      }
-      else if (inputs[i].isMouseMotion) {  
-        mouseHoldCount[i]++; // input remains pressed, increment mouse hold
+        Serial.print(now() );
+        Serial.print(";touchEvent;");
+        Serial.print(inputs[i].keyCode);
+        Serial.print(";");
+        Serial.print(0);
+        Serial.println(";");
+        //Serial.println(inputs[i].keyCode);
       }
     } 
     else if (!inputs[i].pressed) {
       if (inputs[i].bufferSum > pressThreshold) {  // input becomes pressed
         inputChanged = true;
         inputs[i].pressed = true; 
-        if (inputs[i].isKey) {
-          //Keyboard.press(inputs[i].keyCode);
-          
-          Serial.print(now() );
-          Serial.print(";touchEvent;");
-          Serial.print(inputs[i].keyCode);
-          Serial.print(";");
-          Serial.print(1);
-          Serial.println(";");
-        }
+        //Keyboard.press(inputs[i].keyCode);
+        
+        Serial.print(now() );
+        Serial.print(";touchEvent;");
+        Serial.print(inputs[i].keyCode);
+        Serial.print(";");
+        Serial.print(1);
+        Serial.println(";");
       }
     }
   }
