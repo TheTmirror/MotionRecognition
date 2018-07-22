@@ -59,20 +59,22 @@ class TouchListener(threading.Thread):
                 self.synchronizeTime()
                 continue
             
-            time = input[:input.find(';')]
-            input = input[input.find(';')+1:]
+            #time = input[:input.find(';')]
+            #input = input[input.find(';')+1:]
             event = input[:input.find(';')]
             input = input[input.find(';')+1:]
             location = input[:input.find(';')]
             input = input[input.find(';')+1:]
             val = input[:input.find(';')]
-            time = Decimal('{}'.format(time)).normalize()
             val = Decimal('{}'.format(val)).normalize()
 
             #print("Time: {}\nEvent: {}\nLocation: {}\nValue: {}".format(time, event, location, val));
+            t = time.time()
+            t = Decimal('{}'.format(t)).normalize()
+            print(t)
             
             if event == EVENT_TOUCH:
-                event = TouchEvent(time, location, val)
+                event = TouchEvent(t, location, val)
 
             if event.getEvent() == EVENT_TOUCH and event.getValue() == Decimal('0'):
                 if tapTimeStamp != None and (event.getTime() - tapTimeStamp) <= Decimal('{}'.format(timeout)):
@@ -108,3 +110,4 @@ class TouchListener(threading.Thread):
 
     def synchronizeTime(self):
         self.ser.write("T{}".format(time.time()).encode())
+        print("Time: {} - Synchronization Forced", time.time())

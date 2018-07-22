@@ -362,8 +362,8 @@ void updateInputStates() {
         inputs[i].pressed = false;
         //Keyboard.release(inputs[i].keyCode);
 
-        Serial.print(now() );
-        Serial.print(";touchEvent;");
+        //Serial.print(now() );
+        Serial.print("touchEvent;");
         Serial.print(inputs[i].keyCode);
         Serial.print(";");
         Serial.print(0);
@@ -377,8 +377,8 @@ void updateInputStates() {
         inputs[i].pressed = true; 
         //Keyboard.press(inputs[i].keyCode);
         
-        Serial.print(now() );
-        Serial.print(";touchEvent;");
+        //Serial.print(now() );
+        Serial.print("touchEvent;");
         Serial.print(inputs[i].keyCode);
         Serial.print(";");
         Serial.print(1);
