@@ -150,7 +150,9 @@ class Interpolator:
     #Dies ist der Fall wenn es zum Beispiel nur ein Touch Event gibt.
     #Dann kann der Code nicht arbeiten. Was passiert dann?
     def _linearInterpolation(self, time, val, n):
+        #print(n)
         timeReference = time[0]
+        #print(timeReference)
         I = (time[len(time) - 1] - timeReference) / Decimal('{}'.format(n - 1))
         I = I.normalize()
         D = Decimal('0')
@@ -192,12 +194,13 @@ class Interpolator:
         #Manchmal geht aufgrund von Rundungen
         #der letzte Eintrag verloren. Dieser wird
         #hier künstlich wieder hinzugefügt
-        if len(result[0]) != 64:
-            if len(result[0]) == 63:
+        if len(result[0]) != n: #n war 64
+            if len(result[0]) == n - 1:
                 result[0].append(time[len(time)-1])
                 result[1].append(val[len(val)-1])
                 print('Werte wurden nachkorrigiert')
             else:
+                print(len(result[0]))
                 raise NameError("Ein unerwarteter Fehler ist aufgetreten")
         
         return result
