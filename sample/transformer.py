@@ -6,6 +6,9 @@ from motion import Motion
 from events import BaseEvent, RotationEvent, ButtonEvent, TouchEvent
 from events import EVENT_BASE, EVENT_ROTATE, EVENT_BUTTON, EVENT_TOUCH
 
+from decimal import Decimal, getcontext
+getcontext().prec = 15
+
 class MotionTransformer:
 
     def __init__(self):
@@ -16,7 +19,7 @@ class MotionTransformer:
     def transformMotion(self, signals):
         self.signals = signals
         interpolator = Interpolator()
-        n = 64
+        n = 12
 
         startTime = None
         endTime = None
@@ -77,16 +80,32 @@ class MotionTransformer:
         print("Buttons: {}".format(len(transformedTime)))
 
         #Touch Part of Motion
-        result = interpolator.linearInterpolation(self.recordedTouches, n)
+        #result = interpolator.linearInterpolation(self.recordedTouches, n)
 
-        transformedTime = result[0]
-        transformedValue = result[1]
+        #transformedTime = result[0]
+        #transformedValue = result[1]
                 
-        for i in range(len(transformedTime)):
-            event = TouchEvent(transformedTime[i], None, transformedValue[i])
-            transformedMotion.addEvent(event)
+        #for i in range(len(transformedTime)):
+        #    event = TouchEvent(transformedTime[i], None, transformedValue[i])
+        #    transformedMotion.addEvent(event)
 
-        print("Touches: {}".format(len(transformedTime)))
+        #print("Touches: {}".format(len(transformedTime)))
+
+        #New Touch Part
+        touchEventDictionary = self.sortTouches()
+        #print('Buchlänge: {}'.format(len(touchEventDictionary)))
+        #print('Eintraglänge: {}'.format(len(touchEventDictionary[0][1])))
+        #print(touchEventDictionary)
+        for touchLocation in touchEventDictionary:
+            result = interpolator.linearInterpolation(touchLocation[1], n)
+
+            transformedTime = result[0]
+            transformedValue = result[1]
+
+            for i in range(len(transformedTime)):
+                event = TouchEvent(transformedTime[i], touchLocation[0], transformedValue[i])
+                transformedMotion.addEvent(event)
+                
 
         #Scaling and adjustment
         self.scaleMotion(transformedMotion)
@@ -94,11 +113,72 @@ class MotionTransformer:
         
         return transformedMotion
 
+    #Method to sort Touches by Location
+    def sortTouches(self):
+        #Geht bestimmt auch einfacher
+        #Locations wird nur gebraucht weil man nicht nach
+        #etwas wie .index(('x', _)) mit _ als Wildcard suchen kann
+        #locations wird somit als Möglichkeit zum Finden des Index verwendet
+        locations = []
+        touchEventDictionary = []
+
+        #Boolsche Hilfsvariablen
+        startAdded = self.recordedTouches[0].getLocation() == None
+        endAdded = self.recordedTouches[len(self.recordedTouches) - 1].getLocation() == None
+
+        #print(startAdded)
+        #print(endAdded)
+
+        #Sortieren
+        for event in self.recordedTouches:
+            if event.getLocation() == None:
+                continue
+            
+            if event.getLocation() not in locations:
+                locations.append(event.getLocation())
+                touchEventDictionary.append((event.getLocation(), []))
+
+            index = locations.index(event.getLocation())
+            touchEventDictionary[index][1].append(event)
+
+        #Die Neutral Values die hinzugefügt wurden auch
+        #für jede Location hinzufügen
+        if not startAdded:
+            startTouchEvent = self.recordedTouches[0]
+            location = startTouchEvent.getLocation()
+            index = locations.index(location)
+
+            for i in range(len(locations)):
+                if i != index:
+                    tEvent = TouchEvent(startTouchEvent.getTime(), locations[i], Decimal('0'))
+                    touchEventDictionary[i][1].insert(0, tEvent)
+        else:
+            oldEvent = self.recordedTouches[0]
+            for tEvent in touchEventDictionary:
+                location = tEvent[0]
+                newEvent = TouchEvent(oldEvent.getTime(), location, oldEvent.getValue())
+                tEvent[1].insert(0, newEvent)
+
+        if not endAdded:
+            endTouchEvent = self.recordedTouches[len(self.recordedTouches) - 1]
+            location = endTouchEvent.getLocation()
+            index = locations.index(location)
+
+            for i in range(len(locations)):
+                if i != index:
+                    tEvent = TouchEvent(endTouchEvent.getTime(), locations[i], Decimal('0'))
+                    touchEventDictionary[i][1].append(tEvent)
+        else:
+            oldEvent = self.recordedTouches[len(self.recordedTouches) - 1]
+            for tEvent in touchEventDictionary:
+                location = tEvent[0]
+                newEvent = TouchEvent(oldEvent.getTime(), location, oldEvent.getValue())
+                tEvent[1].append(newEvent)
+
+        return touchEventDictionary
+
     #Needed for alignment of time
     def addNeutralValues(self, startTime, endTime):
-        from decimal import Decimal, getcontext
-        getcontext().prec = 15
-        
         #Add startTime and endTime if not present
         #Should be able to workaround this with adapted calculations
         if len(self.recordedRotations) > 0:
