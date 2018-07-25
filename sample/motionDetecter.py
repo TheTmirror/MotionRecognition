@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import threading
+from ipc import IPCMemory
 import sys
 sys.path.insert(0, '/home/pi/Desktop/Griffin')
 from pypowermate import powermate
@@ -8,6 +9,7 @@ sys.path.insert(0, '/home/pi/Desktop/Updated Project/math')
 from myMath import Interpolator, Calculator
 
 from motion import Motion
+from motionManager import MotionManager
 from events import BaseEvent, AboartEvent, RotationEvent, ButtonEvent
 from events import EVENT_BASE, EVENT_ABOART, EVENT_ROTATE, EVENT_BUTTON
 
@@ -18,85 +20,65 @@ class MotionDetecter(threading.Thread):
     MODE_RECOGNITION = 'recognition'
     MODE_LEARNING = 'learning'
 
-    TEMPLATES_PATH = '/home/pi/Desktop/Updated Project/templates/'
-
-    def __init__(self, signals, signalsLock, mode):
+    def __init__(self, signals, signalsLock):
         threading.Thread.__init__(self)
         self.signals = signals
         self.signalsLock = signalsLock
-        self.mode = mode
+        self.sm = IPCMemory()
+        self.smCounter = 0
 
-        self.loadMotions()
-
-    def loadMotions(self):
-        import os
-        from dataManager import DataManager
-
-        dm = DataManager()
-
-        self.motions = []
-
-        oldPath = os.getcwd()
-        try:
-            os.chdir(self.TEMPLATES_PATH)
-        except FileNotFoundError:
-            print("Could not load Motions")
-            return
-
-        #For jede Geste
-        for file in sorted(os.listdir()):
-            filePath = os.getcwd() + "/" + file
-            if os.path.isdir(filePath):
-                continue
-
-            motion = dm.getMotion(filePath)
-            self.motions.append(motion)
-
-        os.chdir(oldPath)
+        self.motionManager = MotionManager()
+        self.motions = self.motionManager.loadMotions()
 
     def run(self):
         print("Motion Detecter is running")
-        if self.mode == self.MODE_RECOGNITION:
-            self.startRecognition()
-        elif self.mode == self.MODE_LEARNING:
-            self.startLearning()
+        if self.motions == []:
+            self.learnLearningMotion()
+        self.startRecognition()
 
     def startRecognition(self):
-        print('Jetzt bitte Geste ausführen und mit Doppelklick bestätigen')
-        self.waitForDoubleClick()
+        self.mode = self.MODE_RECOGNITION
+        while True:
+            self.waitForAboart()
+            print('Geste wurde erkannt')
+            self.sm.add(IPCMemory.RESET_ROTATION_SUM)
 
-        transformer = MotionTransformer()
-        motionToCompare = transformer.transformMotion(self.signalsCopy)
+            transformer = MotionTransformer()
+            motionToCompare = transformer.transformMotion(self.signalsCopy)
 
-        c = Calculator()
-        bestMotion = None
-        bestScore = None
-        for motion in self.motions:
-            matchingScore = c.getMatchingScore(motion, motionToCompare)
-            print("Matching Score with '{}': {}".format(motion.getName(), matchingScore))
+            c = Calculator()
+            bestMotion = None
+            bestScore = None
+            for motion in self.motions:
+                matchingScore = c.getMatchingScore(motion, motionToCompare)
+                print("Matching Score with '{}': {}".format(motion.getName(), matchingScore))
+
+                if bestMotion == None:
+                      bestScore = matchingScore
+                      bestMotion = motion
+                      continue
+
+                if matchingScore > bestScore:
+                      bestScore = matchingScore
+                      bestMotion = motion
 
             if bestMotion == None:
-                  bestScore = matchingScore
-                  bestMotion = motion
-                  continue
+                print("Es sind noch keine Motions angelernt")
+            else:
+                print("Motion {} für Device {} erkannt".format(bestMotion.getName(), bestMotion.getAssociatedDevice()))
 
-            if matchingScore > bestScore:
-                  bestScore = matchingScore
-                  bestMotion = motion
-
-        if bestMotion == None:
-            print("Es sind noch keine Motions angelernt")
-        else:
-            print("Motion {} für Device {} erkannt".format(bestMotion.getName(), bestMotion.getAssociatedDevice()))
+            if bestMotion.getName() == 'startLearning':
+                self.sm.add(IPCMemory.START_LEARNING)
 
     def startLearning(self):
+        self.mode = self.MODE_LEARNING
         self.signalsLock.acquire()
         del self.signals[:]
         self.signalsLock.release()
-        
-        print('Jetzt bitte Geste ausführen')
 
         self.waitForAboart()
+
+        self.sm.add(IPCMemory.RESET_ROTATION_SUM)
 
         transformer = MotionTransformer()
         try :
@@ -108,31 +90,40 @@ class MotionDetecter(threading.Thread):
         name = input('Wie soll die Motion heißen?')
         motion.setName(name)
 
-        self.saveMotion(motion)
+        self.motionManager.saveMotion(motion)
+        self.motions = self.motionManager.loadMotions()
 
-    def saveMotion(self, template):
-        import os
-        from dataManager import DataManager
+    def learnLearningMotion(self):
+        self.mode = self.MODE_LEARNING
+        self.signalsLock.acquire()
+        del self.signals[:]
+        self.signalsLock.release()
+        
+        print('Jetzt bitte Geste ausführen mit der später neue Gesten angelernt werden sollen')
 
-        dm = DataManager()
+        self.waitForAboart()
 
-        i = 0
-        plainPath = self.TEMPLATES_PATH + 'template'
-        while os.path.exists(plainPath + "%s.txt" % i):
-            i = i + 1
-        else:
-            plainPath = plainPath + "%s.txt" % i
+        self.sm.add(IPCMemory.RESET_ROTATION_SUM)
 
-        if not os.path.exists(os.path.dirname(self.TEMPLATES_PATH)):
-            os.makedirs(os.path.dirname(self.TEMPLATES_PATH))
+        transformer = MotionTransformer()
+        try :
+            motion = transformer.transformMotion(self.signalsCopy)
+        except NotEnoughSignals:
+            print("Die Geste beinhaltet keine Aktionen. Sie wird nicht gespeichert")
+            return
 
-        dm.saveMotion(template, plainPath)
-        print('Motion Saved')
+        name = input('Wie soll die Motion heißen?')
+        motion.setName(name)
+
+        self.motionManager.saveMotion(motion)
+        self.motions = self.motionManager.loadMotions()
 
     def waitForAboart(self):
+        print('Jetzt bitte Geste ausführen und mit Doppelklick bestätigen')
         counter = 0
 
         while True:
+            self.checkSharedMemory()
             self.signalsLock.acquire()
             if len(self.signals) <= counter:
                 self.signalsLock.release()
@@ -162,37 +153,6 @@ class MotionDetecter(threading.Thread):
             if signals[i] == None:
                 del signals[i]
 
-    def waitForDoubleClick(self):
-        timeout = 0.5
-        
-        counter = 0
-        clickTime = None
-        
-        while True:
-            #Aktives warten ist scheiße
-            #Gibt es bei Python eine Möglichkeit
-            #für wait() und notify()
-            self.signalsLock.acquire()
-            if len(self.signals) <= counter:
-                #print('Zu wenig Einträge')
-                self.signalsLock.release()
-                continue
-            #print('Started Recognition')
-            event = self.signals[counter]
-
-            if event.getEvent() == EVENT_BUTTON and event.getValue() == 0:
-                if clickTime != None and (event.getTime() - clickTime) <= timeout:
-                    self.saveCopyOfSignals()
-                    self.clearDoubleClick(self.signalsCopy)
-                    del self.signals[:]
-                    self.signalsLock.release()
-                    break
-                else:
-                    clickTime = event.getTime()
-            
-            self.signalsLock.release()
-            counter = counter + 1
-
     #ATTENTION! LOCK MUST BE REQUIRED FIRST!!!
     def saveCopyOfSignals(self):
         self.signalsCopy = self.signals[:]
@@ -206,5 +166,34 @@ class MotionDetecter(threading.Thread):
             event = signals[i]
             if isinstance(event, ButtonEvent):
                 del signals[i]
-                removedButtonEvents = removedButtonEvents + 1        
-            
+                removedButtonEvents = removedButtonEvents + 1
+
+    def checkSharedMemory(self):
+        import time
+        #print('Checking Size')
+        #print('SmCounter = {}'.format(self.smCounter))
+        #print('SmSize = {}'.format(self.sm.getSize()))
+        if self.smCounter < self.sm.getSize():
+            message = self.sm.get(self.smCounter)
+            #print(message)
+
+            self.smCounter = self.smCounter + 1
+
+            if message == IPCMemory.SHUTDOWN:
+                print('I shall shutdown')
+                time.sleep(2)
+                sys.exit()
+            elif message == IPCMemory.START_LEARNING:
+                if self.mode == self.MODE_LEARNING:
+                    print("I'm already learning")
+                else:
+                    print('I shall start learning')
+                    time.sleep(2)
+                    self.startLearning()
+            elif message == IPCMemory.START_RECOGNIZING:
+                if self.mode == self.MODE_RECOGNITION:
+                    print("I'm already recognizing")
+                else:
+                    print('I shall start recognition')
+                    time.sleep(2)
+                    self.startRecognition()

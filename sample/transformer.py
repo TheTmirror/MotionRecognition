@@ -19,7 +19,7 @@ class MotionTransformer:
     def transformMotion(self, signals):
         self.signals = signals
         interpolator = Interpolator()
-        n = 12
+        n = 64
 
         startTime = None
         endTime = None

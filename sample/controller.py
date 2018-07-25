@@ -1,4 +1,6 @@
 import threading
+import time
+from ipc import IPCMemory
 import motionRecognizer
 import mcListener
 import tListener
@@ -22,16 +24,17 @@ class Controller:
     def start(self):
         
         signalsLock = threading.Lock()
+        self.sm = IPCMemory()
         
         listenerThread = mcListener.MicroControllerListener(self.signals, signalsLock)
         tThread = tListener.TouchListener(self.signals, signalsLock)
-        detectionThread = MotionDetecter(self.signals, signalsLock,
-                                         #MotionDetecter.MODE_RECOGNITION)
-                                         MotionDetecter.MODE_LEARNING)
+        detectionThread = MotionDetecter(self.signals, signalsLock)
         
         listenerThread.start()
         tThread.start()
         detectionThread.start()
+
+        #self.initMultishutdown(10)
         
         listenerThread.join()
         tThread.join()
@@ -40,6 +43,13 @@ class Controller:
         #print(self.signals)
         
         print('Controller wird beendet')
+
+    def initMultishutdown(self, time):
+        print('Multishutdown incomming')
+        for i in range(time, -1, -1):
+            print(i)
+            time.sleep(1)
+        self.sm.add(IPCMemory.SHUTDOWN)
 
     def detect(self):
         sys.path.insert(0, '/home/pi/Desktop/Updated Project/math')

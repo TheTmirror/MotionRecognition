@@ -4,6 +4,8 @@ import sys
 import serial
 import time
 
+from ipc import IPCMemory
+
 from decimal import Decimal, getcontext
 getcontext().prec = 15
 
@@ -19,6 +21,9 @@ class TouchListener(threading.Thread):
         threading.Thread.__init__(self)
         self.signals = signals
         self.signalsLock = signalsLock
+
+        self.sm = IPCMemory()
+        self.smCounter = 0
         
         self.ser = serial.Serial(self.usbPath, self.baudrate)
         self.ser.flush()
@@ -50,6 +55,9 @@ class TouchListener(threading.Thread):
         sum = 0
 
         while True:
+            self.checkSharedMemory()
+            if(self.ser.inWaiting() <= 0):
+                continue
             input = self.ser.readline()
             input = self.convertText(input)
 
@@ -59,8 +67,6 @@ class TouchListener(threading.Thread):
                 self.synchronizeTime()
                 continue
             
-            #time = input[:input.find(';')]
-            #input = input[input.find(';')+1:]
             event = input[:input.find(';')]
             input = input[input.find(';')+1:]
             location = input[:input.find(';')]
@@ -68,7 +74,6 @@ class TouchListener(threading.Thread):
             val = input[:input.find(';')]
             val = Decimal('{}'.format(val)).normalize()
 
-            #print("Time: {}\nEvent: {}\nLocation: {}\nValue: {}".format(time, event, location, val));
             t = time.time()
             t = Decimal('{}'.format(t)).normalize()
             print(t)
@@ -79,16 +84,17 @@ class TouchListener(threading.Thread):
             if event.getEvent() == EVENT_TOUCH and event.getValue() == Decimal('0'):
                 if tapTimeStamp != None and (event.getTime() - tapTimeStamp) <= Decimal('{}'.format(timeout)):
                     self.signalsLock.acquire()
-                    #self.signals.append(event)
                     self.aboart()
+                    #print('Gestenende wurde erkannt')
                     self.signalsLock.release()
-                    break
                 else:
                     tapTimeStamp = event.getTime()
             
             self.signalsLock.acquire()
             self.signals.append(event)
             self.signalsLock.release()
+
+        self.cleanUp()
 
     #ATTENTION NOT THREAD SAFE! LOCK ME REQUIRED BEFORE AND RELEASED AFTER
     def aboart(self):
@@ -111,3 +117,18 @@ class TouchListener(threading.Thread):
     def synchronizeTime(self):
         self.ser.write("T{}".format(time.time()).encode())
         print("Time: {} - Synchronization Forced", time.time())
+
+    def checkSharedMemory(self):
+        import time
+        if self.smCounter < self.sm.getSize():
+            message = self.sm.get(self.smCounter)
+            self.smCounter = self.smCounter + 1
+
+            if message == IPCMemory.SHUTDOWN:
+                print('I shall shutdown')
+                time.sleep(2)
+                self.cleanUp()
+                sys.exit()
+
+    def cleanUp(self):
+        print('TouchListener wurde beendet')
