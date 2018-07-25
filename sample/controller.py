@@ -1,5 +1,6 @@
 import threading
 import time
+from rest import RestServer
 from deviceManager import DeviceManager
 from ipc import IPCMemory
 import motionRecognizer
@@ -20,6 +21,7 @@ class Controller:
     def __init__(self):
         self.signals = []
         self.initDevices()
+        self.startRestServer()
         #self.start()
         
     def start(self):
@@ -44,6 +46,10 @@ class Controller:
         #print(self.signals)
         
         print('Controller wird beendet')
+
+    def startRestServer(self):
+        restServer = RestServer()
+        restServer.start()
 
     def initMultishutdown(self, time):
         print('Multishutdown incomming')

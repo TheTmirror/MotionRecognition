@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+from flask import Blueprint, jsonify, request
+
+device_api = Blueprint('device_api', __name__)
+
 class DeviceManager:
 
     __devices = dict()
@@ -62,6 +66,10 @@ class PhillipsHueLightBulb(Device):
     def disconnect(self):
         self.connectionEstablished = False
 
+    def getAllControllFunctions(self):
+        functions = [self.switch.__name__]
+        return functions
+
 class Door(Device):
 
     def __init__(self):
@@ -88,4 +96,38 @@ class Door(Device):
         self.connectionEstablished = True
 
     def disconnect(self):
-        self.connectionEstablished = False   
+        self.connectionEstablished = False
+
+    def getAllControllFunctions(self):
+        functions = [self.open.__name__, self.close.__name__]
+        return functions
+
+@device_api.route("/init", methods = ['GET'])
+def init():
+    dm = DeviceManager()
+    dm.initDevices()
+    return "Devices wurden erfolgreich initialisiert"
+
+@device_api.route("/devices", methods = ['GET'])
+def restGetAllDevices():
+    dm = DeviceManager()
+    devices = dm.getAllDevices()
+    dic = {'devices' : []}
+    for deviceName in devices:
+        deviceDic = dict()
+        device = dm.getDevice(deviceName)
+        deviceDic['name'] = device.getName()
+        deviceDic['functions'] = device.getAllControllFunctions()
+        dic['devices'].append(deviceDic)
+
+    return jsonify(dic)
+
+@device_api.route("/functions", methods = ['GET'])
+def getFunctionsOfDevice():
+    dm = DeviceManager()
+    deviceName = request.args.get('deviceName')
+    print("Device Name: {}".format(deviceName))
+    device = dm.getDevice(deviceName)
+    functions = device.getAllControllFunctions()
+    result = {'functions':functions}
+    return jsonify(result)
