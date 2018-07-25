@@ -12,4 +12,4 @@ class RestServer(threading.Thread):
         self.app.register_blueprint(device_api)
 
     def run(self):
-        self.app.run(debug=False)
+        self.app.run(host='0.0.0.0')
