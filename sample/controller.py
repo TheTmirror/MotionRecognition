@@ -1,5 +1,6 @@
 import threading
 import time
+from deviceManager import DeviceManager
 from ipc import IPCMemory
 import motionRecognizer
 import mcListener
@@ -19,7 +20,7 @@ class Controller:
     def __init__(self):
         self.signals = []
         self.initDevices()
-        self.start()
+        #self.start()
         
     def start(self):
         
@@ -88,13 +89,8 @@ class Controller:
             
 
     def initDevices(self):
-        self.devices = []
-        
-        phueBulbKitchen = philipsHueLightBulb.PhilipsHueLightBulb()
-        self.devices.append(['Philips Hue Light Bulb Kitchen', phueBulbKitchen])
-        
-        phueBulbLivingRoom = philipsHueLightBulb.PhilipsHueLightBulb()
-        self.devices.append(['Philips Hue Light Bulb Living Room', phueBulbLivingRoom])
+        deviceManager = DeviceManager()
+        deviceManager.initDevices()
 
-        knob = powermate.Powermate(mcListener.devicePath)
-        self.devices.append(['Knob', knob])
+        #knob = powermate.Powermate(mcListener.devicePath)
+        #self.devices.append(['Knob', knob])
