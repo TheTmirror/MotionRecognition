@@ -1,16 +1,18 @@
 # -*- coding: utf-8 -*-
+#System
 import threading
 import sys
 import serial
 import time
 
+#Project
 from ipc import IPCMemory
-
 from decimal import Decimal, getcontext
-getcontext().prec = 15
-
 from events import BaseEvent, AboartEvent, TouchEvent
 from events import EVENT_BASE, EVENT_ABOART, EVENT_TOUCH
+
+#Scriptsetup
+getcontext().prec = 15
 
 class TouchListener(threading.Thread):
 
