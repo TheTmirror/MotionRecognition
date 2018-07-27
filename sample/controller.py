@@ -58,11 +58,11 @@ class Controller:
         self.sm.add(IPCMemory.SHUTDOWN)
 
     def initManager(self):
-        motionManager = MotionManager()
-        motionManager.initMotions()
-
         deviceManager = DeviceManager()
         deviceManager.initDevices()
+        
+        motionManager = MotionManager()
+        motionManager.initMotions()
 
     def detect(self):
         sys.path.insert(0, '/home/pi/Desktop/Updated Project/math')
