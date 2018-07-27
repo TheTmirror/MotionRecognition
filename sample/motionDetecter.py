@@ -1,18 +1,20 @@
 # -*- coding: utf-8 -*-
+#System
 import threading
-from ipc import IPCMemory
 import sys
+
+#Systempaths
 sys.path.insert(0, '/home/pi/Desktop/Griffin')
-from pypowermate import powermate
-
 sys.path.insert(0, '/home/pi/Desktop/Updated Project/math')
-from myMath import Interpolator, Calculator
 
+#Project
+from ipc import IPCMemory
+from pypowermate import powermate
+from myMath import Interpolator, Calculator
 from motion import Motion
 from motionManager import MotionManager
 from events import BaseEvent, AboartEvent, RotationEvent, ButtonEvent
 from events import EVENT_BASE, EVENT_ABOART, EVENT_ROTATE, EVENT_BUTTON
-
 from transformer import MotionTransformer, NotEnoughSignals
 
 class MotionDetecter(threading.Thread):
@@ -28,11 +30,11 @@ class MotionDetecter(threading.Thread):
         self.smCounter = 0
 
         self.motionManager = MotionManager()
-        self.motions = self.motionManager.loadMotions()
 
     def run(self):
         print("Motion Detecter is running")
-        if self.motions == []:
+        print(self.motionManager.getAllMotions())
+        if not self.motionManager.getAllMotions():
             self.learnLearningMotion()
         self.startRecognition()
 
@@ -49,23 +51,23 @@ class MotionDetecter(threading.Thread):
             c = Calculator()
             bestMotion = None
             bestScore = None
-            for motion in self.motions:
-                matchingScore = c.getMatchingScore(motion, motionToCompare)
-                print("Matching Score with '{}': {}".format(motion.getName(), matchingScore))
+            for motion in self.motionManager.getAllMotions():
+                matchingScore = c.getMatchingScore(self.motionManager.getMotion(motion), motionToCompare)
+                print("Matching Score with '{}': {}".format(self.motionManager.getMotion(motion).getName(), matchingScore))
 
                 if bestMotion == None:
                       bestScore = matchingScore
-                      bestMotion = motion
+                      bestMotion = self.motionManager.getMotion(motion)
                       continue
 
                 if matchingScore > bestScore:
                       bestScore = matchingScore
-                      bestMotion = motion
+                      bestMotion = self.motionManager.getMotion(motion)
 
             if bestMotion == None:
                 print("Es sind noch keine Motions angelernt")
             else:
-                print("Motion {} für Device {} erkannt".format(bestMotion.getName(), bestMotion.getAssociatedDevice()))
+                print("Motion {} für Device {} erkannt".format(bestMotion.getName(), bestMotion.getAssignedDevice()))
 
             if bestMotion.getName() == 'startLearning':
                 self.sm.add(IPCMemory.START_LEARNING)
@@ -90,8 +92,9 @@ class MotionDetecter(threading.Thread):
         name = input('Wie soll die Motion heißen?')
         motion.setName(name)
 
-        self.motionManager.saveMotion(motion)
-        self.motions = self.motionManager.loadMotions()
+        self.motionManager.addMotion(motion)
+
+        self.mode = self.MODE_RECOGNITION
 
     def learnLearningMotion(self):
         self.mode = self.MODE_LEARNING
@@ -112,11 +115,9 @@ class MotionDetecter(threading.Thread):
             print("Die Geste beinhaltet keine Aktionen. Sie wird nicht gespeichert")
             return
 
-        name = input('Wie soll die Motion heißen?')
-        motion.setName(name)
+        motion.setName('startLearning')
 
-        self.motionManager.saveMotion(motion)
-        self.motions = self.motionManager.loadMotions()
+        self.motionManager.addMotion(motion)
 
     def waitForAboart(self):
         print('Jetzt bitte Geste ausführen und mit Doppelklick bestätigen')
