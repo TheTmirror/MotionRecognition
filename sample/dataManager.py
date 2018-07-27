@@ -60,6 +60,11 @@ class DataManager:
         else:
             f.write("Device:{};\n".format(None))
 
+        if motion.isFunctionAssigned():
+            f.write("Function:{};\n".format(motion.getAssignedFunction().__name__))
+        else:
+            f.write("Function:{};\n".format(None))
+
         #String must always have form:
         #Time, Event, Location, Value, Sum
         for event in motion.getEvents():
@@ -94,6 +99,13 @@ class DataManager:
                 device = deviceManager.getDevice(deviceName)
                 motion.assignDevice(device)
                 continue
+            elif line[:len("Function")] == "Function":
+                functionName = line[len("Function:"):line.find(";")]
+                if functionName == 'None':
+                    continue
+                device = motion.getDevice()
+                function = getattr(device, functionName)
+                motion.assignFunction(function)
             
             time = line[line.find("Time:")+len("Time:"):line.find(";")]
             time = Decimal(time)

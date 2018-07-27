@@ -5,6 +5,10 @@ import os
 #Project
 from dataManager import DataManager
 from motion import Motion
+from flask import Blueprint, jsonify, request
+
+#Scriptsetup
+motion_api = Blueprint('motion_api', __name__)
 
 class MotionManager:
 
@@ -80,3 +84,16 @@ class MotionManager:
 
     def getMotionFile(self, key):
         return self.__motionFiles[key]
+
+@motion_api.route('/motions', methods=['GET'])
+def restGetAllMotions():
+    mm = MotionManager()
+    motions = mm.getAllMotions()
+    dic = {'motions' : []}
+    for motionName in motions:
+        motionDic = dict()
+        motion = mm.getMotion(motionName)
+        motionDic['name'] = motion.getName()
+        dic['motions'].append(motionDic)
+
+    return jsonify(dic)
