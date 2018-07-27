@@ -1,34 +1,37 @@
+#System
 import threading
 import time
-from deviceManager import DeviceManager
-from ipc import IPCMemory
-import motionRecognizer
-import mcListener
-import tListener
-from motionDetecter import MotionDetecter
-
 import sys
 
-sys.path.insert(0, '/home/pi/Desktop/Updated Project/devices')
-import philipsHueLightBulb
-
+#Syspaths
 sys.path.insert(0, '/home/pi/Desktop/Griffin')
+
+#Project
+from rest import RestServer
+from deviceManager import DeviceManager
+from ipc import IPCMemory
+from mcListener import MicroControllerListener
+from tListener import TouchListener
+from motionDetecter import MotionDetecter
+from motionManager import MotionManager
+
 from pypowermate import powermate
 
 class Controller:
     
     def __init__(self):
         self.signals = []
-        self.initDevices()
-        #self.start()
+        self.initManager()
+        self.startRestServer()
+        self.start()
         
     def start(self):
         
         signalsLock = threading.Lock()
         self.sm = IPCMemory()
         
-        listenerThread = mcListener.MicroControllerListener(self.signals, signalsLock)
-        tThread = tListener.TouchListener(self.signals, signalsLock)
+        listenerThread = MicroControllerListener(self.signals, signalsLock)
+        tThread = TouchListener(self.signals, signalsLock)
         detectionThread = MotionDetecter(self.signals, signalsLock)
         
         listenerThread.start()
@@ -40,10 +43,12 @@ class Controller:
         listenerThread.join()
         tThread.join()
         detectionThread.join()
-
-        #print(self.signals)
         
         print('Controller wird beendet')
+
+    def startRestServer(self):
+        restServer = RestServer()
+        restServer.start()
 
     def initMultishutdown(self, time):
         print('Multishutdown incomming')
@@ -51,6 +56,13 @@ class Controller:
             print(i)
             time.sleep(1)
         self.sm.add(IPCMemory.SHUTDOWN)
+
+    def initManager(self):
+        deviceManager = DeviceManager()
+        deviceManager.initDevices()
+        
+        motionManager = MotionManager()
+        motionManager.initMotions()
 
     def detect(self):
         sys.path.insert(0, '/home/pi/Desktop/Updated Project/math')
@@ -86,11 +98,3 @@ class Controller:
 
         dm._saveTimes(times, piPathTime, exPathTime)
         dm._saveSummen(summen, piPathSumme, exPathSumme)
-            
-
-    def initDevices(self):
-        deviceManager = DeviceManager()
-        deviceManager.initDevices()
-
-        #knob = powermate.Powermate(mcListener.devicePath)
-        #self.devices.append(['Knob', knob])

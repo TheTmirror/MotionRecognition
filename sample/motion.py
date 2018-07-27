@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from events import BaseEvent, RotationEvent, ButtonEvent
 
 class Motion:
@@ -7,7 +8,8 @@ class Motion:
         self.startTime = None
         self.endTime = None
         self.name = None
-        self.associatedDevice = None
+        self.assignedDevice = None
+        self.assignedFunction = None
 
     def isEmpty(self):
         if events != None and len(events) > 0:
@@ -45,14 +47,25 @@ class Motion:
     def getEvents(self):
         return self.events
 
-    def associate(self, device):
-        self.associatedDevice = device
+    def assignDevice(self, device):
+        self.assignedDevice = device
 
-    def isAssociated(self):
-        return self.associatedDevice != None
+    def isDeviceAssigned(self):
+        return self.assignedDevice != None
 
-    def getAssociatedDevice(self):
-        return self.associatedDevice
+    def getAssignedDevice(self):
+        return self.assignedDevice
+
+    def assignFunction(self, function):
+        #Hier fehlt ein Check ob das zugeordnete Device
+        #überhaupt die Funktion zur Verfügung stellt
+        self.assignedFunction = function
+
+    def isFunctionAssigned(self):
+        return self.assignedFunction != None
+
+    def getAssignedFunction(self):
+        return self.assignedFunction
 
     def equals(self, motion):
         eventsToCompare = motion.getEvents()
@@ -77,3 +90,6 @@ class Motion:
                     return False
 
         return True
+
+    def __repr__(self):
+        return "Dies ist Motion {}".format(self.getName())

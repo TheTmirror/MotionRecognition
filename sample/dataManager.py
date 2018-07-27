@@ -9,6 +9,7 @@ from events import BaseEvent, RotationEvent, ButtonEvent, TouchEvent
 from events import EVENT_BASE, EVENT_ROTATE, EVENT_BUTTON, EVENT_TOUCH
 
 from motion import Motion
+from deviceManager import DeviceManager
 
 class DataManager:
 
@@ -54,7 +55,15 @@ class DataManager:
         f = open(path, 'w')
 
         f.write("Name:{};\n".format(motion.getName()))
-        f.write("Device:{};\n".format(motion.getAssociatedDevice()))
+        if motion.isDeviceAssigned():
+            f.write("Device:{};\n".format(motion.getAssignedDevice().getName()))
+        else:
+            f.write("Device:{};\n".format(None))
+
+        if motion.isFunctionAssigned():
+            f.write("Function:{};\n".format(motion.getAssignedFunction().__name__))
+        else:
+            f.write("Function:{};\n".format(None))
 
         #String must always have form:
         #Time, Event, Location, Value, Sum
@@ -74,6 +83,7 @@ class DataManager:
         f.close()
 
     def getMotion(self, path):
+        deviceManager = DeviceManager()
         f = open(path, 'r')
 
         motion = Motion()
@@ -83,8 +93,19 @@ class DataManager:
                 motion.setName(line[len("Name:"):line.find(";")])
                 continue
             elif line[:len("Device")] == "Device":
-                motion.associate(line[len("Device:"):line.find(";")])
+                deviceName = line[len("Device:"):line.find(";")]
+                if deviceName == 'None':
+                    continue
+                device = deviceManager.getDevice(deviceName)
+                motion.assignDevice(device)
                 continue
+            elif line[:len("Function")] == "Function":
+                functionName = line[len("Function:"):line.find(";")]
+                if functionName == 'None':
+                    continue
+                device = motion.getDevice()
+                function = getattr(device, functionName)
+                motion.assignFunction(function)
             
             time = line[line.find("Time:")+len("Time:"):line.find(";")]
             time = Decimal(time)
@@ -244,74 +265,3 @@ class DataManager:
         if path == None:
             path = self.eventPathPiFormat
         return self.getData(path)
-
-if __name__ == '__main__':
-    dm = DataManager()
-
-    times = [0, 1.5, 1.7, 3, 3.1, 4, 5, 6, 6.5, 11, 11.5, 13, 14, 15, 16,
-             17, 18, 19, 19.5, 20]
-    values = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
-              18, 19, 20]
-
-    summe = 0
-    summen = []
-    for val in values:
-        summe = summe + val
-        summen.append(summe)
-
-    events = ['rotate', 'rotate', 'rotate', 'rotate', 'rotate', 'rotate',
-              'rotate', 'rotate', 'rotate', 'rotate', 'rotate', 'rotate',
-              'rotate', 'rotate', 'rotate', 'rotate', 'rotate', 'rotate',
-              'rotate', 'rotate']
-
-    dm.saveTimes(times)
-    dm.saveValues(values)
-    dm.saveSummen(summen)
-    dm.saveEvents(events)
-
-    timesCheck = dm.getTimes()
-    valuesCheck = dm.getValues()
-    summenCheck = dm.getSummen()
-    eventsCheck = dm.getEvents()
-
-    for i in range(len(times)):
-        if Decimal('{}'.format(times[i])) != timesCheck[i]:
-            raise NameError('Time wurde nicht richtig gespeichert')
-        if Decimal('{}'.format(values[i])) != valuesCheck[i]:
-            raise NameError('Value wurde nicht richtig gespeichert')
-        if Decimal('{}'.format(summen[i])) != summenCheck[i]:
-            raise NameError('Summe wurde nicht richtig gespeichert')
-        if events[i] != eventsCheck[i]:
-            raise NameError('Event wurde nicht richtig gespeichert')
-
-    print('Single Check ist okay')
-
-    data = []
-
-    for i in range(len(times)):
-        t = times[i]
-        v = values[i]
-        s = summen[i]
-        e = events[i]
-
-        data.append((t, e, v, s))
-    
-    dm.saveAllData(data)
-
-    dataCheck = dm.getAllData()
-
-    for i in range(len(data)):
-        (t, e, v, s) = data[i]
-        (tc, ec, vc, sc) = dataCheck[i]
-
-        if Decimal('{}'.format(t)) != tc:
-            raise NameError('Time wurde nicht richtig gespeichert')
-        if Decimal('{}'.format(v)) != vc:
-            raise NameError('Value wurde nicht richtig gespeichert')
-        if Decimal('{}'.format(s)) != sc:
-            raise NameError('Summe wurde nicht richtig gespeichert')
-        if e != ec:
-            raise NameError('Event wurde nicht richtig gespeichert')
-
-
-    print('Mutli Check ist okay')
