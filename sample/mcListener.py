@@ -1,16 +1,21 @@
 # -*- coding: utf-8 -*-
+#System
 import threading
-from ipc import IPCMemory
 import sys
+#Systempaths
 sys.path.insert(0, '/home/pi/Desktop/Griffin')
+
+#Project
+from ipc import IPCMemory
 from pypowermate import powermate
-
 from decimal import Decimal, getcontext
+from events import BaseEvent, RotationEvent, ButtonEvent
+from events import EVENT_BASE, EVENT_ROTATE, EVENT_BUTTON
+
+#Scriptsetup
 getcontext().prec = 15
-
-from events import BaseEvent, RotationEvent, ButtonEvent, EVENT_BASE, EVENT_ROTATE, EVENT_BUTTON
-
 devicePath = '/dev/input/by-id/usb-Griffin_Technology__Inc._Griffin_PowerMate-event-if00'
+
 class MicroControllerListener(threading.Thread):
     
     def __init__(self, signals, signalsLock):
