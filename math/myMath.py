@@ -20,10 +20,117 @@ class Calculator:
     def getMatchingScore(self, m1, m2):
         oddRotation = Decimal('1') - self.getAverageRotationDifference(m1, m2) / Decimal('800')
         oddButton = Decimal('1') - self.getAverageButtonDifference(m1, m2) / Decimal('1')
+        oddTouch = self.getTouchOdds(m1, m2)
 
-        odds = oddRotation * oddButton
-        odds.normalize()
+        #print("IsDecimal: {} - Value: {}".format(isinstance(oddRotation, Decimal), oddRotation))
+        #print("IsDecimal: {} - Value: {}".format(isinstance(oddButton, Decimal), oddButton))
+        #print("IsDecimal: {} - Value: {}".format(isinstance(oddTouch, Decimal), oddTouch))
+
+        odds = oddRotation * oddButton * oddTouch
+        #print("Odds beofre: {}".format(odds))
+        odds = odds.normalize()
+        #print("Odds after: {}".format(odds))
         return odds
+
+    def fillIntoDict(self, touchEvents):
+        result = dict()
+
+        for event in touchEvents:
+            if not isinstance(event, TouchEvent):
+                raise NameError('Should not happen')
+
+            if event.getLocation() not in result:
+                result[event.getLocation()]= list()
+
+            result[event.getLocation()].append(event)
+
+        return result
+
+    def getAverageTouchDifferenceOfOneLocation(self, touchEventsM1, touchEventsM2):
+        if len(touchEventsM1) != len(touchEventsM2):
+            print("t1", len(touchEventsM1))
+            print("t2", len(touchEventsM2))
+            raise NameError('Es gab einen Fehler in der Touch Länge')
+
+        differences = list()
+        length = len(touchEventsM1)
+
+        for i in range(length):
+            x = abs(touchEventsM1[i].getValue() - touchEventsM2[i].getValue())
+            x = x.normalize()
+            differences.append(x)
+
+        sum = Decimal('0')
+        for difference in differences:
+            sum = sum + difference
+            sum = sum.normalize()
+
+        x = sum / Decimal(len(touchEventsM1))
+        x = x.normalize()
+        return x
+
+    def getTouchOdds(self, m1, m2):
+        touchEventsM1 = []
+        touchEventsM2 = []
+
+        differences = []
+
+        for event in m1.getEvents():
+            if isinstance(event, TouchEvent):
+                touchEventsM1.append(event)
+
+        for event in m2.getEvents():
+            if isinstance(event, TouchEvent):
+                touchEventsM2.append(event)
+
+        #print("#Werte M1: {}".format(len(touchEventsM1)))
+        #print("#Werte M2: {}".format(len(touchEventsM2)))
+
+        touchEventsM1 = self.fillIntoDict(touchEventsM1)
+        touchEventsM2 = self.fillIntoDict(touchEventsM2)
+
+        #print(touchEventsM1)
+        #print("")
+        #print("")
+        #print("")
+        #print(touchEventsM2)
+
+        m1Keys = list(touchEventsM1.keys())
+        m2Keys = list(touchEventsM2.keys())
+
+        #print(m1Keys)
+        #print(m2Keys)
+
+        odds = dict()
+        #return Decimal('1')
+        keys = m1Keys.copy()
+
+        for key in m2Keys:
+            if key not in keys:
+                keys.append(key)
+
+        #print("All Keys: {}".format(keys))
+
+        for key in keys:
+            m1HasKey = key in m1Keys
+            m2HasKey = key in m2Keys
+
+            averageDifference = None
+            if m1HasKey and m2HasKey:
+                averageDifference = self.getAverageTouchDifferenceOfOneLocation(touchEventsM1[key], touchEventsM2[key])
+            elif m1HasKey or m2HasKey:
+                averageDifference = 1
+            else:
+                averageDifference = 0
+
+            odds[key] = Decimal('1') - averageDifference / Decimal('1')
+
+        result = Decimal('1')
+
+        for key in odds:
+            result = result * odds[key]
+
+        return result
 
     def getAverageButtonDifference(self, m1, m2):
         buttonEventsM1 = []
