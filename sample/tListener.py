@@ -30,25 +30,11 @@ class TouchListener(threading.Thread):
         self.ser = serial.Serial(self.usbPath, self.baudrate)
         self.ser.flush()
 
-        self.setupArduino()
     
     def run(self):
         print('TouchListener is running')
         self.startListening()
 
-    def setupArduino(self, timeout = 10):
-        t0 = time.time()
-
-        print("Setting Up Arduino")
-        while True:
-            if time.time() - t0 >= timeout:
-                raise NameError("Es gab einen Timeout beim Setup")
-            if self.ser.inWaiting() > 0:
-                text = self.convertText(self.ser.readline())
-                if text.find("TIME_REQUEST") != -1:
-                    break
-        self.synchronizeTime()
-        print("Arduino is Ready")
     
     def startListening(self):
         tapTimeStamp = None
@@ -60,13 +46,8 @@ class TouchListener(threading.Thread):
             self.checkSharedMemory()
             if(self.ser.inWaiting() <= 0):
                 continue
-            input = self.ser.readline()
-            input = self.convertText(input)
 
-            index = input.find("TIME_REQUEST")
 
-            if index != -1:
-                self.synchronizeTime()
                 continue
             
             event = input[:input.find(';')]

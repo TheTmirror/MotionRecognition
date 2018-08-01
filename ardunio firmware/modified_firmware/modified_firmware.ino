@@ -165,7 +165,7 @@ void setup()
 ////////////////////
 void loop() 
 {
-  if(Serial.available()) {
+  /*if(Serial.available()) {
     processSyncMessage();
   }
 
@@ -174,7 +174,7 @@ void loop()
     setSyncProvider(requestSync);
     delay(1000);  //So the host has enough time to react and not double send timeStamp
     return;
-  }
+  }*/
   updateMeasurementBuffers();
   updateBufferSums();
   updateBufferIndex();
