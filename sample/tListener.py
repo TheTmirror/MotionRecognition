@@ -59,7 +59,7 @@ class TouchListener(threading.Thread):
             try:
                 subDic = self.eventsMetaInfo[event.getLocation()]
             except:
-                print('Meta Info wird neu hinzugefügt')
+                #print('Meta Info wird neu hinzugefügt')
                 subDic = {}
                 #subDic['recordedEventTime'] = None
                 subDic['lastEventValue'] = None
@@ -91,7 +91,7 @@ class TouchListener(threading.Thread):
         self.signalsLock.acquire()
         self.signals.append(event)
         self.signalsLock.release()
-        print("{} - Added".format(event))
+        #print("{} - Added".format(event))
 
         if event.getValue() == 1:
             self.touchCounter = self.touchCounter + 1

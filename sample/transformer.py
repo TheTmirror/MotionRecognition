@@ -65,7 +65,7 @@ class MotionTransformer:
             event = RotationEvent(transformedTime[i], None, transformedSum[i])
             transformedMotion.addEvent(event)
 
-        print("Rotations: {}".format(len(transformedTime)))
+        #print("Rotations: {}".format(len(transformedTime)))
 
         #Button Part of Motion
         result = interpolator.linearInterpolation(self.recordedButtons, n)
@@ -77,7 +77,7 @@ class MotionTransformer:
             event = ButtonEvent(transformedTime[i], transformedValue[i])
             transformedMotion.addEvent(event)
 
-        print("Buttons: {}".format(len(transformedTime)))
+        #print("Buttons: {}".format(len(transformedTime)))
 
         #Touch Part of Motion
         #result = interpolator.linearInterpolation(self.recordedTouches, n)
