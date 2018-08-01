@@ -103,9 +103,10 @@ class DataManager:
                 functionName = line[len("Function:"):line.find(";")]
                 if functionName == 'None':
                     continue
-                device = motion.getDevice()
+                device = motion.getAssignedDevice()
                 function = getattr(device, functionName)
                 motion.assignFunction(function)
+                continue;
             
             time = line[line.find("Time:")+len("Time:"):line.find(";")]
             time = Decimal(time)
