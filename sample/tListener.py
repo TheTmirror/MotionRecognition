@@ -30,6 +30,9 @@ class TouchListener(threading.Thread):
         self.ser = serial.Serial(self.usbPath, self.baudrate)
         self.ser.flush()
 
+        #Der TouchThreshhold ist die Zeit, die vergehen muss,
+        #damit ein Touch Signal als gültig erkannt wird
+        self.threshhold = 0.2
         self.touchCounter = 0;
         self.checkCounter = 0;
     
@@ -37,63 +40,7 @@ class TouchListener(threading.Thread):
         print('TouchListener is running')
         self.startListening()
 
-    def updateEvents(self):
-        if self.checkCounter % 1000 == 0:
-            #print("{}: Checking".format(self.checkCounter))
-            pass
-        #self.checkCounter = self.checkCounter + 1
-        for key in self.eventsMetaInfo:
-            subDic = self.eventsMetaInfo[key]
-            subDic['timeSinceLastEvent'] = Decimal(time.time()) - subDic['event'].getTime()
-
-        for key in self.eventsMetaInfo:
-            subDic = self.eventsMetaInfo[key]
-            if subDic['timeSinceLastEvent'] > self.threshhold:
-                if subDic['lastEventValue'] == None or subDic['lastEventValue'] != subDic['event'].getValue():
-                    self.addEvent(subDic['event'])
-                    subDic['lastEventValue'] = subDic['event'].getValue()
-
-    def addEvent(self, event):
-        #self.signalsLock.acquire()
-        #self.signals.append(event)
-        print("{} - Added".format(event))
-        #self.signalsLock.release()
-
-        if event.getValue() == 1:
-            self.touchCounter = self.touchCounter + 1
-        else:
-            if self.touchCounter == 1:
-                print("Gestenende wurde erkannt")
-                #self.signalsLock.acquire()
-                #self.aboart()
-                #self.signalsLock.release()
-
-            self.touchCounter = self.touchCounter - 1
-
-    def getEvent(self):
-        input = self.ser.readline()
-        input = self.convertText(input)
-            
-        event = input[:input.find(';')]
-        input = input[input.find(';')+1:]
-        location = input[:input.find(';')]
-        input = input[input.find(';')+1:]
-        val = input[:input.find(';')]
-        val = Decimal('{}'.format(val)).normalize()
-
-        t = time.time()
-        t = Decimal('{}'.format(t)).normalize()
-
-        if event == EVENT_TOUCH:
-            return TouchEvent(t, location, val)
-        else:
-            return None
-    
     def startListening(self):
-        timeStamp = None
-        self.threshhold = 0.2
-
-        sum = 0
         self.eventsMetaInfo = dict()
 
         while True:
@@ -124,6 +71,58 @@ class TouchListener(threading.Thread):
 
         self.cleanUp()
 
+    def updateEvents(self):
+        if self.checkCounter % 1000 == 0:
+            #print("{}: Checking".format(self.checkCounter))
+            pass
+        #self.checkCounter = self.checkCounter + 1
+        for key in self.eventsMetaInfo:
+            subDic = self.eventsMetaInfo[key]
+            subDic['timeSinceLastEvent'] = Decimal(time.time()) - subDic['event'].getTime()
+
+        for key in self.eventsMetaInfo:
+            subDic = self.eventsMetaInfo[key]
+            if subDic['timeSinceLastEvent'] > self.threshhold:
+                if subDic['lastEventValue'] == None or subDic['lastEventValue'] != subDic['event'].getValue():
+                    self.addEvent(subDic['event'])
+                    subDic['lastEventValue'] = subDic['event'].getValue()
+
+    def addEvent(self, event):
+        self.signalsLock.acquire()
+        self.signals.append(event)
+        self.signalsLock.release()
+        print("{} - Added".format(event))
+
+        if event.getValue() == 1:
+            self.touchCounter = self.touchCounter + 1
+        else:
+            if self.touchCounter == 1:
+                print("Gestenende wurde erkannt")
+                self.signalsLock.acquire()
+                self.aboart()
+                self.signalsLock.release()
+
+            self.touchCounter = self.touchCounter - 1
+
+    def getEvent(self):
+        input = self.ser.readline()
+        input = self.convertText(input)
+            
+        event = input[:input.find(';')]
+        input = input[input.find(';')+1:]
+        location = input[:input.find(';')]
+        input = input[input.find(';')+1:]
+        val = input[:input.find(';')]
+        val = Decimal('{}'.format(val)).normalize()
+
+        t = time.time()
+        t = Decimal('{}'.format(t)).normalize()
+
+        if event == EVENT_TOUCH:
+            return TouchEvent(t, location, val)
+        else:
+            return None
+
     #ATTENTION NOT THREAD SAFE! LOCK ME REQUIRED BEFORE AND RELEASED AFTER
     def aboart(self):
         aboartEvent = AboartEvent(time.time())
@@ -141,10 +140,6 @@ class TouchListener(threading.Thread):
             text = text[:len(text)-2]
             text = text.decode('utf-8')
             return text
-
-    def synchronizeTime(self):
-        self.ser.write("T{}".format(time.time()).encode())
-        print("Time: {} - Synchronization Forced", time.time())
 
     def checkSharedMemory(self):
         import time
