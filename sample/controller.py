@@ -22,7 +22,7 @@ class Controller:
     def __init__(self):
         self.signals = []
         self.initManager()
-        self.startRestServer()
+        #self.startRestServer()
         self.start()
         
     def start(self):
@@ -34,15 +34,15 @@ class Controller:
         tThread = TouchListener(self.signals, signalsLock)
         detectionThread = MotionDetecter(self.signals, signalsLock)
         
-        listenerThread.start()
+        #listenerThread.start()
         tThread.start()
-        detectionThread.start()
+        #detectionThread.start()
 
         #self.initMultishutdown(10)
         
-        listenerThread.join()
+        #listenerThread.join()
         tThread.join()
-        detectionThread.join()
+        #detectionThread.join()
         
         print('Controller wird beendet')
 
