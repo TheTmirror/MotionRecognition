@@ -34,7 +34,6 @@ class TouchListener(threading.Thread):
         #damit ein Touch Signal als gültig erkannt wird
         self.threshhold = 0.2
         self.touchCounter = 0;
-        self.checkCounter = 0;
     
     def run(self):
         print('TouchListener is running')
@@ -56,14 +55,11 @@ class TouchListener(threading.Thread):
 
             #Event in DIC einfügen
             subDic = None
-            try:
+            if event.getLocation() in self.eventsMetaInfo:
                 subDic = self.eventsMetaInfo[event.getLocation()]
-            except:
-                #print('Meta Info wird neu hinzugefügt')
+            else:
                 subDic = {}
-                #subDic['recordedEventTime'] = None
                 subDic['lastEventValue'] = None
-                #subDic['timeSinceLastEvent'] = None
                 subDic['event'] = None
                 self.eventsMetaInfo[event.getLocation()] = subDic
 
@@ -72,10 +68,6 @@ class TouchListener(threading.Thread):
         self.cleanUp()
 
     def updateEvents(self):
-        if self.checkCounter % 1000 == 0:
-            #print("{}: Checking".format(self.checkCounter))
-            pass
-        #self.checkCounter = self.checkCounter + 1
         for key in self.eventsMetaInfo:
             subDic = self.eventsMetaInfo[key]
             subDic['timeSinceLastEvent'] = Decimal(time.time()) - subDic['event'].getTime()
@@ -91,7 +83,6 @@ class TouchListener(threading.Thread):
         self.signalsLock.acquire()
         self.signals.append(event)
         self.signalsLock.release()
-        #print("{} - Added".format(event))
 
         if event.getValue() == 1:
             self.touchCounter = self.touchCounter + 1
@@ -127,14 +118,6 @@ class TouchListener(threading.Thread):
     def aboart(self):
         aboartEvent = AboartEvent(time.time())
         self.signals.append(aboartEvent)
-        
-        #counter = 0
-        #for i in range(len(self.signals)-1, -1, -1):
-        #    if self.signals[i].getEvent() == EVENT_TOUCH and counter < 3:
-        #        self.signals[i] = None
-        #        counter = counter + 1
-        #    elif counter == 3:
-        #        break
 
     def convertText(self, text = None):
             text = text[:len(text)-2]

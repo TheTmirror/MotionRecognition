@@ -65,8 +65,6 @@ class MotionTransformer:
             event = RotationEvent(transformedTime[i], None, transformedSum[i])
             transformedMotion.addEvent(event)
 
-        #print("Rotations: {}".format(len(transformedTime)))
-
         #Button Part of Motion
         result = interpolator.linearInterpolation(self.recordedButtons, n)
 
@@ -77,25 +75,8 @@ class MotionTransformer:
             event = ButtonEvent(transformedTime[i], transformedValue[i])
             transformedMotion.addEvent(event)
 
-        #print("Buttons: {}".format(len(transformedTime)))
-
         #Touch Part of Motion
-        #result = interpolator.linearInterpolation(self.recordedTouches, n)
-
-        #transformedTime = result[0]
-        #transformedValue = result[1]
-                
-        #for i in range(len(transformedTime)):
-        #    event = TouchEvent(transformedTime[i], None, transformedValue[i])
-        #    transformedMotion.addEvent(event)
-
-        #print("Touches: {}".format(len(transformedTime)))
-
-        #New Touch Part
         touchEventDictionary = self.sortTouches()
-        #print('Buchlänge: {}'.format(len(touchEventDictionary)))
-        #print('Eintraglänge: {}'.format(len(touchEventDictionary[0][1])))
-        #print(touchEventDictionary)
         for touchLocation in touchEventDictionary:
             result = interpolator.linearInterpolation(touchLocation[1], n)
 
@@ -125,9 +106,6 @@ class MotionTransformer:
         #Boolsche Hilfsvariablen
         startAdded = self.recordedTouches[0].getLocation() == None
         endAdded = self.recordedTouches[len(self.recordedTouches) - 1].getLocation() == None
-
-        #print(startAdded)
-        #print(endAdded)
 
         #Sortieren
         for event in self.recordedTouches:

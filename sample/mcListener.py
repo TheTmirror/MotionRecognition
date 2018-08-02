@@ -53,15 +53,14 @@ class MicroControllerListener(threading.Thread):
             elif event == EVENT_BUTTON:
                 event = ButtonEvent(time, val)
 
+            #Check For Double Tap
             if event.getEvent() == EVENT_BUTTON and event.getValue() == Decimal('0'):
                 if tapTimeStamp != None and (event.getTime() - tapTimeStamp) <= Decimal('{}'.format(timeout)):
-                    self.sm.add(IPCMemory.START_LEARNING)
-                    #print('Added Learning')
+                    pass
                 tapTimeStamp = event.getTime()
             
             self.signalsLock.acquire()
             self.signals.append(event)
-            #print(event)
             self.signalsLock.release()
 
         self.cleanUp()
